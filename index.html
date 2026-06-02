@@ -430,7 +430,7 @@ function renderSingle(content){
     const lbl=el("label","stam-label");lbl.textContent=f.label;
     const inp=el("input","stam-input");inp.type=f.type||"text";
     inp.value=boringStam[f.key]||"";inp.placeholder=f.label;
-    inp.oninput=()=>{boringStam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);};
+    inp.oninput=()=>{boringStam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);if(f.key==="boring"){const chips=document.querySelectorAll(".boring-chip");chips.forEach((chip,i)=>{chip.textContent=state.boringStam[BORINGER[i]]?.boring||BORINGER[i];});}};
     wrap.appendChild(lbl);wrap.appendChild(inp);
 
     if(f.key==="startdato"){
@@ -464,7 +464,8 @@ function renderSingle(content){
   const mid=el("div","boring-selector");
   BORINGER.forEach(bk=>{
     const chip=el("div","boring-chip"+(bk===b?" active":""));
-    chip.textContent=bk;chip.onclick=()=>{state.active=bk;render();};
+    chip.textContent=state.boringStam[bk]?.boring||bk;
+    chip.onclick=()=>{state.active=bk;render();};
     mid.appendChild(chip);
   });
   const tr=el("div","toolbar-right");
@@ -645,7 +646,7 @@ function renderOverview(content){
     const wrap=el("div","ov-boring");
     const head=el("div","ov-head");
     const left=el("div");
-    const name=el("div","ov-name");name.textContent=(stam.navn||"Boring "+b)+(boringStam.boring&&stam.navn?" — "+boringStam.boring:"");
+    const name=el("div","ov-name");name.textContent=(stam.navn?stam.navn+" — ":"")+(boringStam.boring||b);
     const meta=el("div","ov-meta");meta.textContent=boringStam.startdato?("Start: "+new Date(boringStam.startdato).toLocaleDateString("da-DK")):"Ingen startdato";
     left.appendChild(name);left.appendChild(meta);
     const dur=el("div","ov-days");dur.textContent=maxDay(b)+" dage";
@@ -681,7 +682,7 @@ function exportImg(b){
     document.body.appendChild(wrapper);
     window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(c=>{
       document.body.removeChild(wrapper);
-      const a=document.createElement("a");a.download="Awell-tidsplan-"+b+".png";a.href=c.toDataURL();a.click();
+      const a=document.createElement("a");a.download="Awell-tidsplan-"+(state.boringStam[b]?.boring||b)+".png";a.href=c.toDataURL();a.click();
     });
   };
   if(window.html2canvas){load();}
@@ -716,7 +717,7 @@ function exportXls(b){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(buildRows(b));
   ws["!cols"]=[{wch:4},{wch:28},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:8})];
-  XLSX.utils.book_append_sheet(wb,ws,"Boring "+b);XLSX.writeFile(wb,"Awell-tidsplan-"+b+".xlsx");
+  XLSX.utils.book_append_sheet(wb,ws,state.boringStam[b]?.boring||"Boring "+b);XLSX.writeFile(wb,"Awell-tidsplan-"+(state.boringStam[b]?.boring||b)+".xlsx");
 }
 
 function exportAll(){
@@ -724,7 +725,7 @@ function exportAll(){
   BORINGER.forEach(b=>{
     const ws=XLSX.utils.aoa_to_sheet(buildRows(b));
     ws["!cols"]=[{wch:4},{wch:28},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:8})];
-    XLSX.utils.book_append_sheet(wb,ws,"Boring "+b);
+    XLSX.utils.book_append_sheet(wb,ws,state.boringStam[b]?.boring||"Boring "+b);
   });
   XLSX.writeFile(wb,"Awell-tidsplan-alle-boringer.xlsx");
 }
