@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Awell Boringplan">
-<link rel="apple-touch-icon" href="/icon-512.png">
-<link rel="icon" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/icon-boringplan.png">
+<link rel="icon" href="/icon-boringplan.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -100,9 +100,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .footer-cell{padding:7px 3px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid var(--border);}
 .footer-cell:last-child{border-right:none;}
 
-.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
-.legend-swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);white-space:nowrap;}
+.legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 
 .overview-grid{display:grid;gap:12px;}
 .ov-boring{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
@@ -199,9 +199,7 @@ function render(){
     ch.appendChild(ct);ch.appendChild(mid);ch.appendChild(tr);
     card.appendChild(ch);
     const cb=el("div","card-body");
-    const info=el("div","info-bar");
-    info.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Træk i kanterne af bjælkerne for at justere start og slut.';
-    cb.appendChild(info);
+
     cb.appendChild(buildGantt(state.active,tasks,maxDay(state.active)+1,true));
     renderLegend(cb);card.appendChild(cb);content.appendChild(card);
   } else {
