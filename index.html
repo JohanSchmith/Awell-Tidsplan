@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Awell Boringregenerering</title>
+<title>Awell Tidsplan</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2078C3">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -152,8 +152,8 @@ let drag=null;
 let nextId=100;
 
 // Multi-project storage
-const PROJECTS_KEY="awell-boringplan-projects";
-const CURRENT_KEY="awell-boringplan-current";
+const PROJECTS_KEY="awell-tidsplan-projects";
+const CURRENT_KEY="awell-tidsplan-current";
 
 function listProjects(){
   try{return JSON.parse(localStorage.getItem(PROJECTS_KEY)||"[]");}catch{return[];}
@@ -355,7 +355,7 @@ function render(){
   tbl.appendChild(lm);tbl.appendChild(lt);tb.appendChild(tbl);
   const tbr=el("div","topbar-right");
   const apt=el("div","topbar-apptitle");
-  apt.textContent=state.stam.navn?"Boringregenerering · "+state.stam.navn:"Boringregenerering";
+  apt.textContent=state.stam.navn?"Tidsplan · "+state.stam.navn:"Tidsplan";
   const tabsEl=el("div","tabs");
   ["single","overview"].forEach(t=>{
     const tab=el("button","tab"+(state.tab===t?" active":""));
@@ -727,7 +727,7 @@ function buildRows(b){
   const sd=getStartDate(b);
   const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
   const rows=[
-    ["Awell Brøndboring — Boringregenerering"],
+    ["Awell Brøndboring — Tidsplan"],
     [],
     ["Projektnavn / Vandværk:", stam.navn||"—"],
     ["Boring:",                  boringStam.boring||b],

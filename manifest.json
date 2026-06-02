@@ -1,6 +1,6 @@
 {
-  "name": "Awell Boringregenerering",
-  "short_name": "Boringplan",
+  "name": "Awell Tidsplan",
+  "short_name": "Tidsplan",
   "description": "Tidsplanlægning for regenerering af boringer",
   "start_url": "/",
   "display": "standalone",
