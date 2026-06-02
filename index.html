@@ -172,7 +172,7 @@ function render(){
   if(state.tab==="single"){
     const tasks=state.boringer[state.active];
     const total=maxDay(state.active);
-    const activeDays=tasks.filter(t=>t.cat!=="Reaktionstid").reduce((a,t)=>a+(t.end-t.start+1),0);
+    const activeDaySet=new Set();tasks.filter(t=>t.cat!=="Reaktionstid").forEach(t=>{for(let d=t.start;d<=t.end;d++)activeDaySet.add(d);});const activeDays=activeDaySet.size;
     const stats=el("div","stat-row");
     [{l:"Total dage",v:total,u:"dage"},{l:"Aktive dage",v:activeDays,u:"dage"},{l:"Aktiviteter",v:tasks.length,u:"stk."},{l:"Renpumpning start",v:"Dag "+(tasks.find(t=>t.cat==="Renpumpning")?.start||"—"),u:""}].forEach(s=>{
       const sc=el("div","stat-card");
@@ -251,14 +251,20 @@ function buildGantt(boring,tasks,days,interactive){
     const bar=el("div","bar");
     bar.style.left=((task.start-1)*cw)+"%";bar.style.width=((task.end-task.start+1)*cw)+"%";
     bar.style.background=task.color;bar.style.color=task.text;
+    bar.title=task.label;
     if(interactive){
       const lh=el("div","resize-handle left");const lb=el("div","bar-label");lb.textContent=task.label;const rh=el("div","resize-handle right");
       bar.appendChild(lh);bar.appendChild(lb);bar.appendChild(rh);
       lh.addEventListener("mousedown",e=>startDrag(e,boring,task,"left",days,bar,track));
       rh.addEventListener("mousedown",e=>startDrag(e,boring,task,"right",days,bar,track));
       bar.addEventListener("mousedown",e=>{if(e.target===lh||e.target===rh)return;startDrag(e,boring,task,"move",days,bar,track);});
+      const updateLabel=()=>{const barPx=bar.offsetWidth;lb.style.display=barPx<60?"none":"block";};
+      requestAnimationFrame(updateLabel);
+      new ResizeObserver(updateLabel).observe(bar);
     } else {
-      const lb=el("div","bar-label");lb.style.padding="0 6px";lb.textContent=task.label;bar.appendChild(lb);
+      const lb=el("div","bar-label");lb.style.padding="0 6px";lb.textContent=task.label;
+      bar.appendChild(lb);
+      requestAnimationFrame(()=>{if(bar.offsetWidth<50)lb.style.display="none";});
     }
     bc.appendChild(bar);track.appendChild(bc);row.appendChild(track);wrap.appendChild(row);
   });
