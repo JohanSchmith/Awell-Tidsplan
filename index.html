@@ -177,6 +177,41 @@ function saveAsNew(){
   state.currentProjectId=Date.now()+"";
   saveProject();
 }
+function exportProjectFile(){
+  const name=state.stam.navn||"Awell-tidsplan";
+  const data={version:1,boringerList:BORINGER,...state};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/[^a-zA-Z0-9æøåÆØÅ ]/g,"-")+".json";
+  a.click();URL.revokeObjectURL(a.href);
+  showToast("Projekt eksporteret ✓");
+}
+function importProjectFile(){
+  const inp=document.createElement("input");inp.type="file";inp.accept=".json";
+  inp.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const saved=JSON.parse(ev.target.result);
+        if(!saved.boringer)throw new Error("Ugyldig fil");
+        // Save as new project in localStorage
+        const projects=listProjects();
+        const id=Date.now()+"";
+        const name=saved.stam?.navn||file.name.replace(".json","");
+        const entry={id,name,updated:new Date().toISOString(),data:JSON.stringify({...saved,boringerList:saved.boringerList||Object.keys(saved.boringer)})};
+        projects.push(entry);
+        localStorage.setItem(PROJECTS_KEY,JSON.stringify(projects));
+        openProject(id);
+        showToast("Projekt importeret: "+name+" ✓");
+      }catch(err){alert("Kunne ikke importere: "+err.message);}
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
 function deleteProject(id){
   const projects=listProjects().filter(p=>p.id!==id);
   localStorage.setItem(PROJECTS_KEY,JSON.stringify(projects));
@@ -234,7 +269,12 @@ function renderProjectList(){
   const newBtn=el("button","btn primary");
   newBtn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nyt projekt';
   newBtn.onclick=newProject;
-  hrow.appendChild(htitle);hrow.appendChild(newBtn);content.appendChild(hrow);
+  const impBtn=el("button","btn");
+  impBtn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Importer';
+  impBtn.onclick=importProjectFile;
+  const btnRow=el("div");btnRow.style.cssText="display:flex;gap:8px;";
+  btnRow.appendChild(impBtn);btnRow.appendChild(newBtn);
+  hrow.appendChild(htitle);hrow.appendChild(btnRow);content.appendChild(hrow);
   const projects=listProjects();
   if(!projects.length){
     const empty=el("div","card");
@@ -260,7 +300,21 @@ function renderProjectList(){
       delBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
       delBtn.title="Slet projekt";
       delBtn.onclick=e=>{e.stopPropagation();if(confirm("Slet \""+p.name+"\"?"))deleteProject(p.id);};
-      ch.appendChild(ct);ch.appendChild(delBtn);card.appendChild(ch);
+      const expCardBtn=el("button","btn small");
+      expCardBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+      expCardBtn.title="Eksporter som fil";
+      expCardBtn.onclick=e=>{
+        e.stopPropagation();
+        const blob=new Blob([p.data],{type:"application/json"});
+        const a=document.createElement("a");
+        a.href=URL.createObjectURL(blob);
+        a.download=(p.name||"projekt").replace(/[^a-zA-Z0-9æøåÆØÅ ]/g,"-")+".json";
+        a.click();URL.revokeObjectURL(a.href);
+        showToast("Eksporteret ✓");
+      };
+      const cardBtns=el("div");cardBtns.style.cssText="display:flex;gap:6px;flex-shrink:0;";
+      cardBtns.appendChild(expCardBtn);cardBtns.appendChild(delBtn);
+      ch.appendChild(ct);ch.appendChild(cardBtns);card.appendChild(ch);
       card.onclick=()=>openProject(p.id);
       const cb=el("div","card-body");cb.style.paddingTop="10px";
       try{
@@ -371,6 +425,9 @@ function render(){
   const saveNewBtn=el("button","tab");saveNewBtn.textContent="+ Gem kopi";saveNewBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.25);background:none;color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;";
   saveNewBtn.onclick=saveAsNew;
   tbr.appendChild(projBtn);tbr.appendChild(saveBtn);tbr.appendChild(saveNewBtn);
+  const expBtn=el("button","tab");expBtn.textContent="⬇ Eksporter";expBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.25);background:none;color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;";
+  expBtn.onclick=exportProjectFile;
+  tbr.appendChild(expBtn);
   tb.appendChild(tbr);root.appendChild(tb);
   const content=el("div","content");
   if(state.tab==="single") renderSingle(content);
@@ -769,6 +826,20 @@ function nextWorkday(date){
   return d;
 }
 
+
+// Migrer fra gammel nøgle hvis den findes
+(function(){
+  try{
+    const oldKey="awell-boringplan-projects";
+    const newKey="awell-tidsplan-projects";
+    const old=localStorage.getItem(oldKey);
+    const existing=localStorage.getItem(newKey);
+    if(old&&!existing){
+      localStorage.setItem(newKey,old);
+      localStorage.removeItem(oldKey);
+    }
+  }catch(e){}
+})();
 try{
   if(listProjects().length>0){renderProjectList();}
   else{render();}
