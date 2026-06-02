@@ -153,6 +153,13 @@ function getStartDate(b){
   if(!d)return null;
   const p=new Date(d);return isNaN(p)?null:p;
 }
+const DA_DAYS=["Søn","Man","Tirs","Ons","Tors","Fre","Lør"];
+function dayName(b,d){
+  const sd=getStartDate(b);
+  if(!sd)return "D"+d;
+  const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);
+  return DA_DAYS[dt.getDay()];
+}
 function dayLabel(b,d){
   const sd=getStartDate(b);
   if(!sd)return ""+d;
@@ -344,9 +351,23 @@ function buildGantt(b,tasks,interactive){
   });
   weekRow.appendChild(wdays);wrap.appendChild(weekRow);
 
-  // Date row
+  // Day name row (Man, Tirs, Ons...)
+  const dayNameRow=el("div","gantt-date-row");
+  const dnlabel=el("div","gantt-label-col head");dnlabel.style.height="22px";dayNameRow.appendChild(dnlabel);
+  const dnGrid=el("div");dnGrid.style.flex="1";dnGrid.style.display="grid";
+  dnGrid.style.gridTemplateColumns=`repeat(${days},1fr)`;
+  for(let d=1;d<=days;d++){
+    const dc=el("div","date-cell"+(isWeekend(b,d)?" weekend":""));
+    dc.style.fontWeight="600";dc.style.fontSize="10px";
+    dc.style.color=isWeekend(b,d)?"#bbb":"var(--text)";
+    dc.textContent=dayName(b,d);
+    dnGrid.appendChild(dc);
+  }
+  dayNameRow.appendChild(dnGrid);wrap.appendChild(dayNameRow);
+
+  // Date row (22. jun.)
   const dateRow=el("div","gantt-date-row");
-  const dlabel=el("div","gantt-label-col head");dlabel.style.height="24px";dateRow.appendChild(dlabel);
+  const dlabel=el("div","gantt-label-col head");dlabel.style.height="20px";dateRow.appendChild(dlabel);
   const ddGrid=el("div");ddGrid.style.flex="1";ddGrid.style.display="grid";
   ddGrid.style.gridTemplateColumns=`repeat(${days},1fr)`;
   for(let d=1;d<=days;d++){
@@ -478,10 +499,32 @@ function renderOverview(content){
 }
 
 function exportImg(b){
-  const g=document.getElementById("gantt-"+b);if(!g)return;
-  const load=()=>window.html2canvas(g,{scale:2,backgroundColor:"#ffffff"}).then(c=>{
-    const a=document.createElement("a");a.download="Awell-tidsplan-"+b+".png";a.href=c.toDataURL();a.click();
-  });
+  const stam=state.stam[b];
+  const sd=getStartDate(b);
+  const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
+  const load=()=>{
+    const g=document.getElementById("gantt-"+b);if(!g)return;
+    // Build a wrapper with stam header + gantt
+    const wrapper=document.createElement("div");
+    wrapper.style.cssText="background:#fff;padding:20px;font-family:Inter,sans-serif;display:inline-block;min-width:100%;";
+    const hdr=document.createElement("div");
+    hdr.style.cssText="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2078C3;";
+    hdr.innerHTML=`
+      <div style="font-size:18px;font-weight:700;color:#1A2233;margin-bottom:4px;">${stam.navn||"Awell Brøndboring"}</div>
+      <div style="display:flex;gap:24px;font-size:12px;color:#6B7A99;margin-top:6px;">
+        <span><b style="color:#1A2233">Boring:</b> ${stam.boring||b}</span>
+        <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
+        <span><b style="color:#1A2233">Total dage:</b> ${maxDay(b)}</span>
+        ${stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${stam.beskrivelse}</span>`:""}
+      </div>`;
+    const ganttClone=g.cloneNode(true);
+    wrapper.appendChild(hdr);wrapper.appendChild(ganttClone);
+    document.body.appendChild(wrapper);
+    window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(c=>{
+      document.body.removeChild(wrapper);
+      const a=document.createElement("a");a.download="Awell-tidsplan-"+b+".png";a.href=c.toDataURL();a.click();
+    });
+  };
   if(window.html2canvas){load();}
   else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";s.onload=load;document.head.appendChild(s);}
 }
