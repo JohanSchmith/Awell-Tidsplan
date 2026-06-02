@@ -7,156 +7,206 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2078C3">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Awell Boringplan">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-boringplan.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --blue:#2B7DC8;
-  --blue-dark:#185FA5;
-  --blue-light:#B5D4F4;
-  --blue-bg:#E6F1FB;
-  --surface:#ffffff;
-  --bg:#F4F6F9;
-  --border:#DDE3EE;
-  --text:#1A2233;
-  --muted:#6B7A99;
-  --radius:10px;
-  --radius-sm:6px;
-  --shadow:0 1px 4px rgba(43,125,200,0.10);
+  --blue:#2B7DC8;--blue-dark:#185FA5;--blue-light:#B5D4F4;--blue-bg:#E6F1FB;
+  --surface:#fff;--bg:#F4F6F9;--border:#DDE3EE;--text:#1A2233;--muted:#6B7A99;
+  --radius:10px;--radius-sm:6px;--shadow:0 1px 4px rgba(43,125,200,0.10);
 }
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;}
-.app{max-width:980px;margin:0 auto;padding:0 0 40px;}
-
+.app{max-width:1100px;margin:0 auto;padding:0 0 40px;}
 .topbar{background:#2078C3;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;box-shadow:0 2px 10px rgba(32,120,195,0.3);}
 .topbar-logo{display:flex;align-items:center;gap:10px;}
-.logo-mark{display:flex;align-items:flex-end;gap:3px;height:28px;}
 .logo-text{display:flex;flex-direction:column;line-height:1;}
 .logo-awell{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
 .logo-sub{color:rgba(255,255,255,0.75);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:1px;}
 .topbar-right{display:flex;align-items:center;gap:8px;}
 .topbar-apptitle{color:rgba(255,255,255,0.65);font-size:12px;font-weight:500;border-left:1px solid rgba(255,255,255,0.25);padding-left:12px;}
-
 .tabs{display:flex;background:rgba(0,0,0,0.18);border-radius:var(--radius-sm);padding:3px;gap:2px;}
 .tab{padding:5px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;border:none;background:none;color:rgba(255,255,255,0.7);transition:all .15s;}
 .tab.active{background:#fff;color:var(--blue);}
-
 .content{padding:20px 20px 0;}
 .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px;}
 .card-head{padding:13px 16px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .card-title{font-size:14px;font-weight:600;color:var(--text);}
 .card-body{padding:16px;}
 
+/* Stamoplysninger */
+.stam-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0;}
+.stam-field{display:flex;flex-direction:column;gap:4px;}
+.stam-field.full{grid-column:1/-1;}
+.stam-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.stam-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--surface);transition:border-color .15s;outline:none;}
+.stam-input:focus{border-color:var(--blue);}
+.stam-input.textarea{resize:vertical;min-height:56px;}
+
+/* Boring selector + toolbar */
 .boring-selector{display:flex;gap:6px;flex-wrap:wrap;}
 .boring-chip{padding:5px 13px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;background:var(--surface);color:var(--muted);transition:all .15s;}
 .boring-chip.active{background:var(--blue);color:#fff;border-color:var(--blue);}
 .boring-chip:hover:not(.active){border-color:var(--blue);color:var(--blue);}
-
 .toolbar-right{display:flex;gap:8px;}
 .btn{padding:6px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;}
 .btn:hover{border-color:var(--blue);color:var(--blue);}
 .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
 .btn.primary:hover{background:var(--blue-dark);}
+.btn.danger{color:#c0392b;border-color:#e0b0b0;}
+.btn.danger:hover{background:#fff0f0;border-color:#c0392b;}
+.btn.small{padding:4px 9px;font-size:11px;}
 
-.info-bar{background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:9px 13px;margin-bottom:14px;font-size:12px;color:var(--blue-dark);display:flex;align-items:center;gap:7px;}
-
+/* Stats */
 .stat-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;flex:1;min-width:110px;box-shadow:var(--shadow);}
 .stat-label{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:3px;}
 .stat-value{font-size:22px;font-weight:700;color:var(--blue);line-height:1;}
 .stat-unit{font-size:11px;font-weight:500;color:var(--muted);margin-left:2px;}
 
-.gantt-wrap{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
-.gantt-head{display:flex;background:var(--bg);border-bottom:1px solid var(--border);}
-.gantt-label-col{width:165px;flex-shrink:0;padding:8px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid var(--border);}
-.gantt-days{flex:1;display:grid;}
-.day-cell{padding:6px 3px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);border-right:1px solid var(--border);}
-.day-cell:last-child{border-right:none;}
-.day-num{font-size:11px;font-weight:700;display:block;color:var(--text);}
-
+/* Gantt */
+.gantt-scroll{overflow-x:auto;}
+.gantt-wrap{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;min-width:600px;}
+.gantt-week-row{display:flex;background:#f0f4f8;border-bottom:1px solid var(--border);}
+.gantt-label-col{flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;}
+.gantt-label-col.head{width:280px;padding:6px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.gantt-label-col.row{width:280px;padding:6px 12px;}
+.week-cell{text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);padding:5px 4px;border-right:1px solid var(--border);}
+.week-cell:last-child{border-right:none;}
+.gantt-date-row{display:flex;background:var(--bg);border-bottom:1px solid var(--border);}
+.date-cell{text-align:center;font-size:9px;color:var(--muted);padding:4px 2px;border-right:1px solid var(--border);font-weight:500;}
+.date-cell:last-child{border-right:none;}
+.date-cell.weekend{color:#aaa;}
 .gantt-row{display:flex;border-bottom:1px solid var(--border);align-items:stretch;}
 .gantt-row:last-child{border-bottom:none;}
 .gantt-row:hover{background:#FAFBFD;}
-.row-label{width:165px;flex-shrink:0;padding:7px 12px;font-size:12px;color:var(--text);border-right:1px solid var(--border);display:flex;align-items:center;font-weight:500;}
+.row-label-wrap{width:280px;flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:4px 8px;min-height:36px;}
+.row-num{font-size:10px;color:var(--muted);font-weight:600;width:18px;flex-shrink:0;text-align:right;}
+.row-label-input{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;background:transparent;padding:2px 4px;border-radius:3px;cursor:pointer;}
+.row-label-input:focus{background:var(--blue-bg);cursor:text;}
+.row-del{opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;color:#c0392b;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;}
+.gantt-row:hover .row-del{opacity:1;}
 .row-track{flex:1;display:grid;position:relative;height:36px;}
 .day-bg{border-right:1px solid var(--border);}
-
 .day-bg:last-child{border-right:none;}
 .bar-container{position:absolute;inset:0;pointer-events:none;}
 .bar{position:absolute;top:5px;height:26px;border-radius:5px;cursor:grab;pointer-events:all;display:flex;align-items:center;justify-content:space-between;padding:0 5px;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);}
 .bar:active{cursor:grabbing;}
 .bar:hover{filter:brightness(1.07);}
-.bar.hatched{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.18) 0px,rgba(255,255,255,0.18) 4px,transparent 4px,transparent 10px)!important;}
 .bar-label{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;padding:0 3px;}
 .resize-handle{width:5px;height:16px;border-radius:2px;background:rgba(255,255,255,0.4);flex-shrink:0;cursor:ew-resize;}
-
+.bar.hatched{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.18) 0px,rgba(255,255,255,0.18) 4px,transparent 4px,transparent 10px)!important;}
 .footer-row{display:flex;background:var(--bg);border-top:2px solid var(--border);}
-.footer-label{width:165px;flex-shrink:0;padding:7px 12px;font-size:11px;color:var(--muted);border-right:1px solid var(--border);font-weight:600;display:flex;align-items:center;}
+.footer-label-col{width:280px;flex-shrink:0;padding:7px 12px;font-size:11px;color:var(--muted);border-right:1px solid var(--border);font-weight:600;display:flex;align-items:center;}
 .footer-days{flex:1;display:grid;}
 .footer-cell{padding:7px 3px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid var(--border);}
 .footer-cell:last-child{border-right:none;}
+.add-task-row{padding:8px 12px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:8px;}
+.add-task-input{flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);outline:none;}
+.add-task-input:focus{border-color:var(--blue);}
 
-.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);white-space:nowrap;}
-.legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
-
+/* Overview */
 .overview-grid{display:grid;gap:12px;}
 .ov-boring{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
 .ov-head{padding:9px 14px;background:var(--blue-bg);border-bottom:1px solid var(--blue-light);display:flex;align-items:center;justify-content:space-between;}
 .ov-name{font-size:13px;font-weight:700;color:var(--blue-dark);}
+.ov-meta{font-size:11px;color:var(--muted);}
 .ov-days{font-size:11px;font-weight:600;color:var(--blue);background:#fff;border:1px solid var(--blue-light);border-radius:20px;padding:2px 10px;}
 .ov-gantt{overflow-x:auto;}
-.ov-gantt-inner{min-width:580px;}
 </style>
 </head>
 <body>
 <div class="app" id="root"></div>
 <script>
+const COLORS=["#1D9E75","#2B7DC8","#534AB7","#D85A30","#BA7517","#185FA5","#3B6D11","#9B4DA0","#C0392B","#16A085","#E67E22","#7F8C8D"];
 const DEFAULT_TASKS=[
-  {id:1, label:"Anstilling",       start:1,end:1, color:"#1D9E75",text:"#fff",cat:"Forberedelse"},
-  {id:2, label:"Kaptest (før)",    start:1,end:1, color:"#2B7DC8",text:"#fff",cat:"Test"},
-  {id:3, label:"Adskille boring",  start:1,end:1, color:"#1D9E75",text:"#fff",cat:"Forberedelse"},
-  {id:4, label:"Videoinspektion",  start:1,end:2, color:"#534AB7",text:"#fff",cat:"Inspektion"},
-  {id:5, label:"Syre",             start:2,end:4, color:"#D85A30",text:"#fff",cat:"Kemisk behandling"},
-  {id:6, label:"Reaktionstid",     start:4,end:5, color:"#BA7517",text:"#fff",cat:"Reaktionstid"},
-  {id:7, label:"Blæsning",         start:6,end:7, color:"#185FA5",text:"#fff",cat:"Mekanisk rensning"},
-  {id:8, label:"Videoinspektion",  start:8,end:8, color:"#534AB7",text:"#fff",cat:"Inspektion"},
-  {id:9, label:"Samle boring",     start:8,end:8, color:"#1D9E75",text:"#fff",cat:"Forberedelse"},
-  {id:10,label:"Kaptest (efter)",  start:8,end:8, color:"#2B7DC8",text:"#fff",cat:"Test"},
-  {id:11,label:"Renpumpning",      start:9,end:10,color:"#3B6D11",text:"#fff",cat:"Renpumpning"},
+  {id:1,label:"Anstilling",             start:1,end:1, color:"#1D9E75",cat:"Forberedelse"},
+  {id:2,label:"Kaptest (før)",           start:1,end:1, color:"#2B7DC8",cat:"Test"},
+  {id:3,label:"Adskille boring",         start:1,end:1, color:"#1D9E75",cat:"Forberedelse"},
+  {id:4,label:"Videoinspektion",         start:1,end:2, color:"#534AB7",cat:"Inspektion"},
+  {id:5,label:"Syre",                    start:2,end:4, color:"#D85A30",cat:"Kemisk behandling"},
+  {id:6,label:"Reaktionstid",            start:4,end:5, color:"#BA7517",cat:"Reaktionstid"},
+  {id:7,label:"Blæsning",                start:6,end:7, color:"#185FA5",cat:"Mekanisk rensning"},
+  {id:8,label:"Videoinspektion",         start:8,end:8, color:"#534AB7",cat:"Inspektion"},
+  {id:9,label:"Samle boring",            start:8,end:8, color:"#1D9E75",cat:"Forberedelse"},
+  {id:10,label:"Kaptest (efter)",        start:8,end:8, color:"#2B7DC8",cat:"Test"},
+  {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
+const DEFAULT_STAM={navn:"",boring:"",beskrivelse:"",startdato:""};
 const BORINGER=["B1","B2","B3","B4","B5","B6"];
-const WE=[4,5];
+
 function dc(o){return JSON.parse(JSON.stringify(o));}
-let state={tab:"single",active:"B1",boringer:{}};
-BORINGER.forEach(b=>{state.boringer[b]=dc(DEFAULT_TASKS);});
+let state={tab:"single",active:"B1",boringer:{},stam:{}};
+BORINGER.forEach(b=>{state.boringer[b]=dc(DEFAULT_TASKS);state.stam[b]=dc(DEFAULT_STAM);state.stam[b].boring=b;});
 let drag=null;
+let nextId=100;
+
 function maxDay(b){return Math.max(...state.boringer[b].map(t=>t.end));}
 function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
 
+// Date helpers
+function getStartDate(b){
+  const d=state.stam[b].startdato;
+  if(!d)return null;
+  const p=new Date(d);return isNaN(p)?null:p;
+}
+function dayLabel(b,d){
+  const sd=getStartDate(b);
+  if(!sd)return ""+d;
+  const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);
+  return dt.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
+}
+function isWeekend(b,d){
+  const sd=getStartDate(b);
+  if(!sd)return false;
+  const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);
+  return dt.getDay()===0||dt.getDay()===6;
+}
+function getWeekGroups(b,days){
+  const sd=getStartDate(b);
+  if(!sd){
+    // group every 7 days
+    const groups=[];let i=1;
+    while(i<=days){const end=Math.min(i+6,days);groups.push({label:"Uge "+(Math.ceil(i/7)),from:i,to:end});i=end+1;}
+    return groups;
+  }
+  const groups=[];
+  for(let d=1;d<=days;d++){
+    const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);
+    const week=getWeekNumber(dt);
+    const yr=dt.getFullYear();
+    const key="Uge "+week+" "+yr;
+    if(!groups.length||groups[groups.length-1].label!==key){
+      groups.push({label:"Uge "+week,from:d,to:d});
+    } else {
+      groups[groups.length-1].to=d;
+    }
+  }
+  return groups;
+}
+function getWeekNumber(d){
+  const date=new Date(d);date.setHours(0,0,0,0);
+  date.setDate(date.getDate()+3-(date.getDay()+6)%7);
+  const week1=new Date(date.getFullYear(),0,4);
+  return 1+Math.round(((date-week1)/86400000-3+(week1.getDay()+6)%7)/7);
+}
+
 function logoSVG(){
-  return `<svg width="32" height="30" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="13" y="0" width="6" height="28" rx="2" fill="white"/>
-    <rect x="0" y="8" width="6" height="20" rx="2" fill="rgba(255,255,255,0.65)"/>
-    <rect x="26" y="5" width="6" height="23" rx="2" fill="rgba(255,255,255,0.65)"/>
-  </svg>`;
+  return `<svg width="32" height="30" viewBox="0 0 32 30" fill="none"><rect x="13" y="0" width="6" height="28" rx="2" fill="white"/><rect x="0" y="8" width="6" height="20" rx="2" fill="rgba(255,255,255,0.65)"/><rect x="26" y="5" width="6" height="23" rx="2" fill="rgba(255,255,255,0.65)"/></svg>`;
 }
 
 function render(){
-  const root=document.getElementById("root");
-  root.innerHTML="";
+  const root=document.getElementById("root");root.innerHTML="";
   const tb=el("div","topbar");
   const tbl=el("div","topbar-logo");
-  const lm=el("div","logo-mark");lm.innerHTML=logoSVG();
-  const lt=el("div","logo-text");
-  lt.innerHTML='<span class="logo-awell">Awell</span><span class="logo-sub">Brøndboring</span>';
+  const lm=el("div");lm.innerHTML=logoSVG();
+  const lt=el("div","logo-text");lt.innerHTML='<span class="logo-awell">Awell</span><span class="logo-sub">Brøndboring</span>';
   tbl.appendChild(lm);tbl.appendChild(lt);tb.appendChild(tbl);
   const tbr=el("div","topbar-right");
-  const appTitle=el("div","topbar-apptitle");appTitle.textContent="Boringregenerering";
+  const apt=el("div","topbar-apptitle");apt.textContent="Boringregenerering";
   const tabsEl=el("div","tabs");
   ["single","overview"].forEach(t=>{
     const tab=el("button","tab"+(state.tab===t?" active":""));
@@ -164,112 +214,185 @@ function render(){
     tab.onclick=()=>{state.tab=t;render();};
     tabsEl.appendChild(tab);
   });
-  tbr.appendChild(appTitle);tbr.appendChild(tabsEl);
-  tb.appendChild(tbr);root.appendChild(tb);
-
+  tbr.appendChild(apt);tbr.appendChild(tabsEl);tb.appendChild(tbr);root.appendChild(tb);
   const content=el("div","content");
-  if(state.tab==="single"){
-    const tasks=state.boringer[state.active];
-    const total=maxDay(state.active);
-    const activeDaySet=new Set();tasks.filter(t=>t.cat!=="Reaktionstid").forEach(t=>{for(let d=t.start;d<=t.end;d++)activeDaySet.add(d);});const activeDays=activeDaySet.size;
-    const stats=el("div","stat-row");
-    [{l:"Total dage",v:total,u:"dage"},{l:"Aktive dage",v:activeDays,u:"dage"},{l:"Aktiviteter",v:tasks.length,u:"stk."},{l:"Renpumpning start",v:"Dag "+(tasks.find(t=>t.cat==="Renpumpning")?.start||"—"),u:""}].forEach(s=>{
-      const sc=el("div","stat-card");
-      sc.innerHTML=`<div class="stat-label">${s.l}</div><div class="stat-value">${s.v}<span class="stat-unit">${s.u}</span></div>`;
-      stats.appendChild(sc);
-    });
-    content.appendChild(stats);
-    const card=el("div","card");
-    const ch=el("div","card-head");
-    const ct=el("div","card-title");ct.textContent="Tidsplan";
-    const mid=el("div","boring-selector");
-    BORINGER.forEach(b=>{
-      const chip=el("div","boring-chip"+(b===state.active?" active":""));
-      chip.textContent=b;chip.onclick=()=>{state.active=b;render();};
-      mid.appendChild(chip);
-    });
-    const tr=el("div","toolbar-right");
-    const bImg=el("button","btn");
-    bImg.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Billede';
-    bImg.onclick=()=>exportImg(state.active);
-    const bXls=el("button","btn primary");
-    bXls.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Excel';
-    bXls.onclick=()=>exportXls(state.active);
-    tr.appendChild(bImg);tr.appendChild(bXls);
-    ch.appendChild(ct);ch.appendChild(mid);ch.appendChild(tr);
-    card.appendChild(ch);
-    const cb=el("div","card-body");
-
-    cb.appendChild(buildGantt(state.active,tasks,maxDay(state.active)+1,true));
-    card.appendChild(cb);content.appendChild(card);
-  } else {
-    const card=el("div","card");
-    const ch=el("div","card-head");
-    const ct=el("div","card-title");ct.textContent="Samlet overblik — alle boringer";
-    const bAll=el("button","btn primary");
-    bAll.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Eksporter alle';
-    bAll.onclick=exportAll;
-    ch.appendChild(ct);ch.appendChild(bAll);card.appendChild(ch);
-    const cb=el("div","card-body");
-    const grid=el("div","overview-grid");
-    BORINGER.forEach(b=>{
-      const tasks=state.boringer[b];const days=maxDay(b)+1;
-      const wrap=el("div","ov-boring");
-      const head=el("div","ov-head");
-      const name=el("div","ov-name");name.textContent="Boring "+b;
-      const dur=el("div","ov-days");dur.textContent=maxDay(b)+" dage";
-      head.appendChild(name);head.appendChild(dur);wrap.appendChild(head);
-      const ov=el("div","ov-gantt");const inner=el("div","ov-gantt-inner");
-      inner.appendChild(buildGantt(b,tasks,days,false));
-      ov.appendChild(inner);wrap.appendChild(ov);grid.appendChild(wrap);
-    });
-    cb.appendChild(grid);card.appendChild(cb);content.appendChild(card);
-  }
+  if(state.tab==="single") renderSingle(content);
+  else renderOverview(content);
   root.appendChild(content);
 }
 
-function buildGantt(boring,tasks,days,interactive){
-  const wrap=el("div","gantt-wrap");wrap.id="gantt-"+boring;
-  const head=el("div","gantt-head");
-  const hl=el("div","gantt-label-col");hl.textContent="Aktivitet";head.appendChild(hl);
-  const hd=el("div","gantt-days");hd.style.gridTemplateColumns=`repeat(${days},1fr)`;
+function renderSingle(content){
+  const b=state.active;
+  const tasks=state.boringer[b];
+  const stam=state.stam[b];
+  const total=maxDay(b);
+  const activeDaySet=new Set();tasks.forEach(t=>{for(let d=t.start;d<=t.end;d++)activeDaySet.add(d);});
+
+  // Stats
+  const stats=el("div","stat-row");
+  [
+    {l:"Total dage",v:total,u:"dage"},
+    {l:"Aktive dage",v:activeDaySet.size,u:"dage"},
+    {l:"Aktiviteter",v:tasks.length,u:"stk."},
+    {l:"Renpumpning start",v:"Dag "+(tasks.find(t=>t.cat==="Renpumpning")?.start||"—"),u:""}
+  ].forEach(s=>{
+    const sc=el("div","stat-card");
+    sc.innerHTML=`<div class="stat-label">${s.l}</div><div class="stat-value">${s.v}<span class="stat-unit">${s.u}</span></div>`;
+    stats.appendChild(sc);
+  });
+  content.appendChild(stats);
+
+  // Stamoplysninger card
+  const stamCard=el("div","card");
+  const stamHead=el("div","card-head");
+  const stamTitle=el("div","card-title");stamTitle.textContent="Stamoplysninger";
+  stamHead.appendChild(stamTitle);stamCard.appendChild(stamHead);
+  const stamBody=el("div","card-body");
+  const grid=el("div","stam-grid");
+  [
+    {key:"navn",label:"Projektnavn / Vandværk",full:false},
+    {key:"boring",label:"Boring",full:false},
+    {key:"startdato",label:"Startdato",full:false,type:"date"},
+    {key:"beskrivelse",label:"Beskrivelse / noter",full:true,textarea:true},
+  ].forEach(f=>{
+    const wrap=el("div","stam-field"+(f.full?" full":""));
+    const lbl=el("label","stam-label");lbl.textContent=f.label;
+    const inp=el(f.textarea?"textarea":"input","stam-input"+(f.textarea?" textarea":""));
+    if(!f.textarea)inp.type=f.type||"text";
+    inp.value=stam[f.key]||"";
+    inp.placeholder=f.label;
+    inp.oninput=()=>{stam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);};
+    wrap.appendChild(lbl);wrap.appendChild(inp);grid.appendChild(wrap);
+  });
+  stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
+
+  // Gantt card
+  const card=el("div","card");
+  const ch=el("div","card-head");
+  const ct=el("div","card-title");ct.textContent="Tidsplan";
+  const mid=el("div","boring-selector");
+  BORINGER.forEach(bk=>{
+    const chip=el("div","boring-chip"+(bk===b?" active":""));
+    chip.textContent=bk;chip.onclick=()=>{state.active=bk;render();};
+    mid.appendChild(chip);
+  });
+  const tr=el("div","toolbar-right");
+  const bImg=el("button","btn");
+  bImg.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Billede';
+  bImg.onclick=()=>exportImg(b);
+  const bXls=el("button","btn primary");
+  bXls.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Excel';
+  bXls.onclick=()=>exportXls(b);
+  tr.appendChild(bImg);tr.appendChild(bXls);
+  ch.appendChild(ct);ch.appendChild(mid);ch.appendChild(tr);
+  card.appendChild(ch);
+  const cb=el("div","card-body");
+  cb.id="gantt-card-"+b;
+  cb.appendChild(buildGantt(b,tasks,true));
+  card.appendChild(cb);content.appendChild(card);
+}
+
+function renderGanttOnly(b){
+  const cb=document.getElementById("gantt-card-"+b);
+  if(!cb)return;
+  cb.innerHTML="";
+  cb.appendChild(buildGantt(b,state.boringer[b],true));
+}
+
+function buildGantt(b,tasks,interactive){
+  const days=maxDay(b);
+  const weeks=getWeekGroups(b,days);
+  const scroll=el("div","gantt-scroll");
+  const wrap=el("div","gantt-wrap");
+  wrap.id="gantt-"+b;
+
+  // Week header row
+  const weekRow=el("div","gantt-week-row");
+  const wlabel=el("div","gantt-label-col head");wlabel.textContent="Aktivitet";weekRow.appendChild(wlabel);
+  const wdays=el("div");wdays.style.flex="1";wdays.style.display="flex";
+  weeks.forEach(w=>{
+    const wc=el("div","week-cell");
+    wc.style.flex=(w.to-w.from+1)+" 0 0";
+    wc.textContent=w.label;
+    wdays.appendChild(wc);
+  });
+  weekRow.appendChild(wdays);wrap.appendChild(weekRow);
+
+  // Date row
+  const dateRow=el("div","gantt-date-row");
+  const dlabel=el("div","gantt-label-col head");dlabel.style.height="24px";dateRow.appendChild(dlabel);
+  const ddGrid=el("div");ddGrid.style.flex="1";ddGrid.style.display="grid";
+  ddGrid.style.gridTemplateColumns=`repeat(${days},1fr)`;
   for(let d=1;d<=days;d++){
-    const dc=el("div","day-cell");
-    dc.innerHTML=`<span class="day-num">${d}</span>`;
-    hd.appendChild(dc);
+    const dc=el("div","date-cell"+(isWeekend(b,d)?" weekend":""));
+    dc.textContent=dayLabel(b,d);
+    ddGrid.appendChild(dc);
   }
-  head.appendChild(hd);wrap.appendChild(head);
-  tasks.forEach(task=>{
+  dateRow.appendChild(ddGrid);wrap.appendChild(dateRow);
+
+  // Task rows
+  tasks.forEach((task,idx)=>{
     const row=el("div","gantt-row");
-    const rl=el("div","row-label");rl.textContent=task.label;row.appendChild(rl);
-    const track=el("div","row-track");track.style.gridTemplateColumns=`repeat(${days},1fr)`;
+    const rlw=el("div","row-label-wrap");
+    const num=el("div","row-num");num.textContent=idx+1;
+    const inp=el("input","row-label-input");
+    inp.type="text";inp.value=task.label;inp.title="Klik for at redigere";
+    if(interactive){
+      inp.onchange=()=>{task.label=inp.value;};
+      inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();};
+    } else {inp.readOnly=true;}
+    const del=el("button","row-del");del.innerHTML="×";del.title="Fjern aktivitet";
+    del.onclick=()=>{state.boringer[b]=state.boringer[b].filter(t=>t.id!==task.id);render();};
+    rlw.appendChild(num);rlw.appendChild(inp);if(interactive)rlw.appendChild(del);
+    row.appendChild(rlw);
+    const track=el("div","row-track");
+    track.style.gridTemplateColumns=`repeat(${days},1fr)`;
     for(let d=1;d<=days;d++){const bg=el("div","day-bg");track.appendChild(bg);}
-    const bc=el("div","bar-container");const cw=100/days;
-    const bar=el("div","bar");
-    bar.style.left=((task.start-1)*cw)+"%";bar.style.width=((task.end-task.start+1)*cw)+"%";
-    bar.style.background=task.color;bar.style.color=task.text;
-    if(task.cat==="Renpumpning")bar.classList.add("hatched");
+    const bc=el("div","bar-container");
+    const cw=100/days;
+    const bar=el("div","bar"+(task.cat==="Renpumpning"?" hatched":""));
+    bar.style.left=((task.start-1)*cw)+"%";
+    bar.style.width=((task.end-task.start+1)*cw)+"%";
+    bar.style.background=task.color;bar.style.color="#fff";
     bar.title=task.label;
     if(interactive){
-      const lh=el("div","resize-handle left");const lb=el("div","bar-label");lb.textContent=task.label;const rh=el("div","resize-handle right");
+      const lh=el("div","resize-handle left");
+      const lb=el("div","bar-label");lb.textContent=task.label;
+      const rh=el("div","resize-handle right");
       bar.appendChild(lh);bar.appendChild(lb);bar.appendChild(rh);
-      lh.addEventListener("mousedown",e=>startDrag(e,boring,task,"left",days,bar,track));
-      rh.addEventListener("mousedown",e=>startDrag(e,boring,task,"right",days,bar,track));
-      bar.addEventListener("mousedown",e=>{if(e.target===lh||e.target===rh)return;startDrag(e,boring,task,"move",days,bar,track);});
-      const updateLabel=()=>{const barPx=bar.offsetWidth;lb.style.display=barPx<60?"none":"block";};
-      requestAnimationFrame(updateLabel);
-      new ResizeObserver(updateLabel).observe(bar);
+      lh.addEventListener("mousedown",e=>startDrag(e,b,task,"left",bar,track));
+      rh.addEventListener("mousedown",e=>startDrag(e,b,task,"right",bar,track));
+      bar.addEventListener("mousedown",e=>{if(e.target===lh||e.target===rh)return;startDrag(e,b,task,"move",bar,track);});
+      requestAnimationFrame(()=>{if(bar.offsetWidth<60)lb.style.display="none";});
+      new ResizeObserver(()=>{lb.style.display=bar.offsetWidth<60?"none":"block";}).observe(bar);
     } else {
-      const lb=el("div","bar-label");lb.style.padding="0 6px";lb.textContent=task.label;
-      bar.appendChild(lb);
+      const lb=el("div","bar-label");lb.style.padding="0 6px";lb.textContent=task.label;bar.appendChild(lb);
       requestAnimationFrame(()=>{if(bar.offsetWidth<50)lb.style.display="none";});
     }
     bc.appendChild(bar);track.appendChild(bc);row.appendChild(track);wrap.appendChild(row);
   });
-  const fr=el("div","footer-row");const fl=el("div","footer-label");fl.textContent="Parallelle";fr.appendChild(fl);
-  const fd=el("div","footer-days");fd.id="footer-"+boring;fd.style.gridTemplateColumns=`repeat(${days},1fr)`;
+
+  // Add task row
+  if(interactive){
+    const addRow=el("div","add-task-row");
+    const addInp=el("input","add-task-input");addInp.placeholder="+ Tilføj aktivitet...";addInp.type="text";
+    addInp.onkeydown=e=>{
+      if(e.key==="Enter"&&addInp.value.trim()){
+        const last=tasks[tasks.length-1];
+        const col=COLORS[tasks.length%COLORS.length];
+        state.boringer[b].push({id:nextId++,label:addInp.value.trim(),start:last?last.end:1,end:last?last.end+1:2,color:col,cat:"Andet"});
+        render();
+      }
+    };
+    addRow.appendChild(addInp);wrap.appendChild(addRow);
+  }
+
+  // Footer parallelle
+  const fr=el("div","footer-row");
+  const fl=el("div","footer-label-col");fl.textContent="Parallelle";fr.appendChild(fl);
+  const fd=el("div","footer-days");fd.id="footer-"+b;fd.style.gridTemplateColumns=`repeat(${days},1fr)`;
   updFooter(fd,tasks,days);fr.appendChild(fd);wrap.appendChild(fr);
-  return wrap;
+  scroll.appendChild(wrap);return scroll;
 }
 
 function updFooter(fd,tasks,days){
@@ -281,73 +404,87 @@ function updFooter(fd,tasks,days){
   }
 }
 
-function startDrag(e,boring,task,type,days,bar,track){
+function startDrag(e,b,task,type,bar,track){
   e.preventDefault();
-  const rect=track.getBoundingClientRect();const cw=rect.width/days;
-  drag={boring,task,type,sx:e.clientX,os:task.start,oe:task.end,cw,days:99};
+  const rect=track.getBoundingClientRect();
+  const days=maxDay(b);
+  const cw=rect.width/days;
+  drag={b,task,type,sx:e.clientX,os:task.start,oe:task.end,cw};
   document.body.style.cursor=type==="move"?"grabbing":"ew-resize";
   const mv=ev=>{
     if(!drag)return;
     const dc=Math.round((ev.clientX-drag.sx)/drag.cw);const t=drag.task;
-    if(drag.type==="right"){t.end=Math.max(drag.os,Math.min(drag.days,drag.oe+dc));}
+    if(drag.type==="right"){t.end=Math.max(drag.os,drag.oe+dc);}
     else if(drag.type==="left"){t.start=Math.max(1,Math.min(drag.oe,drag.os+dc));}
-    else{const dur=drag.oe-drag.os;const ns=Math.max(1,Math.min(drag.days-dur,drag.os+dc));t.start=ns;t.end=ns+dur;}
-    const pw=100/days;bar.style.left=((t.start-1)*pw)+"%";bar.style.width=((t.end-t.start+1)*pw)+"%";
-    const fd=document.getElementById("footer-"+boring);if(fd)updFooter(fd,state.boringer[boring],days);
+    else{const dur=drag.oe-drag.os;const ns=Math.max(1,drag.os+dc);t.start=ns;t.end=ns+dur;}
+    const days2=maxDay(b);const pw=100/days2;
+    bar.style.left=((t.start-1)*pw)+"%";bar.style.width=((t.end-t.start+1)*pw)+"%";
+    const fd=document.getElementById("footer-"+b);if(fd)updFooter(fd,state.boringer[b],days2);
   };
   const up=()=>{drag=null;document.body.style.cursor="";render();document.removeEventListener("mousemove",mv);document.removeEventListener("mouseup",up);};
   document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
 }
 
-function renderLegend(parent){
-  const cats={};
-  const boring=state.tab==="single"?state.active:BORINGER[0];
-  state.boringer[boring].forEach(t=>{if(!cats[t.cat])cats[t.cat]={color:t.color,hatched:t.cat==="Renpumpning"};});
-  const leg=el("div","legend");
-  Object.entries(cats).forEach(([name,info])=>{
-    const item=el("div","legend-item");
-    const sw=el("div","legend-swatch");
-    sw.style.background=info.color;
-    if(info.hatched)sw.style.backgroundImage="repeating-linear-gradient(45deg,rgba(255,255,255,0.35) 0px,rgba(255,255,255,0.35) 3px,transparent 3px,transparent 7px)";
-    item.appendChild(sw);item.appendChild(document.createTextNode(name));leg.appendChild(item);
+function renderOverview(content){
+  const card=el("div","card");
+  const ch=el("div","card-head");
+  const ct=el("div","card-title");ct.textContent="Samlet overblik — alle boringer";
+  const bAll=el("button","btn primary");
+  bAll.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Eksporter alle';
+  bAll.onclick=exportAll;
+  ch.appendChild(ct);ch.appendChild(bAll);card.appendChild(ch);
+  const cb=el("div","card-body");
+  const grid=el("div","overview-grid");
+  BORINGER.forEach(b=>{
+    const tasks=state.boringer[b];const stam=state.stam[b];
+    const wrap=el("div","ov-boring");
+    const head=el("div","ov-head");
+    const left=el("div");
+    const name=el("div","ov-name");name.textContent=(stam.navn||"Boring "+b)+(stam.boring&&stam.navn?" — "+stam.boring:"");
+    const meta=el("div","ov-meta");meta.textContent=stam.startdato?("Start: "+new Date(stam.startdato).toLocaleDateString("da-DK")):"Ingen startdato";
+    left.appendChild(name);left.appendChild(meta);
+    const dur=el("div","ov-days");dur.textContent=maxDay(b)+" dage";
+    head.appendChild(left);head.appendChild(dur);wrap.appendChild(head);
+    const ov=el("div","ov-gantt");ov.appendChild(buildGantt(b,tasks,false));wrap.appendChild(ov);
+    grid.appendChild(wrap);
   });
-  parent.appendChild(leg);
+  cb.appendChild(grid);card.appendChild(cb);content.appendChild(card);
 }
 
-function exportImg(boring){
-  const g=document.getElementById("gantt-"+boring);if(!g)return;
+function exportImg(b){
+  const g=document.getElementById("gantt-"+b);if(!g)return;
   const load=()=>window.html2canvas(g,{scale:2,backgroundColor:"#ffffff"}).then(c=>{
-    const a=document.createElement("a");a.download="Awell-tidsplan-"+boring+".png";a.href=c.toDataURL();a.click();
+    const a=document.createElement("a");a.download="Awell-tidsplan-"+b+".png";a.href=c.toDataURL();a.click();
   });
   if(window.html2canvas){load();}
   else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";s.onload=load;document.head.appendChild(s);}
 }
 
-function buildRows(boring){
-  const tasks=state.boringer[boring];const days=maxDay(boring);
-  const rows=[["Awell Brøndboring — Boringregenerering"],["Boring: "+boring],["Genereret: "+new Date().toLocaleDateString("da-DK")],[]];
-  const h=["Aktivitet","Kategori","Start (dag)","Slut (dag)","Varighed (dage)"];
-  for(let d=1;d<=days;d++)h.push("Dag "+d+(WE.includes(d)?" (WE)":""));
+function buildRows(b){
+  const tasks=state.boringer[b];const days=maxDay(b);const stam=state.stam[b];
+  const rows=[[stam.navn||"Awell Brøndboring"],[stam.beskrivelse||"Boringregenerering"],["Boring: "+(stam.boring||b)],["Startdato: "+(stam.startdato||"—")],["Genereret: "+new Date().toLocaleDateString("da-DK")],[]];
+  const h=["#","Aktivitet","Start (dag)","Slut (dag)","Varighed (dage)"];
+  for(let d=1;d<=days;d++)h.push(dayLabel(b,d));
   rows.push(h);
-  tasks.forEach(t=>{
-    const r=[t.label,t.cat,t.start,t.end,t.end-t.start+1];
+  tasks.forEach((t,i)=>{
+    const r=[i+1,t.label,t.start,t.end,t.end-t.start+1];
     for(let d=1;d<=days;d++)r.push(t.start<=d&&t.end>=d?"X":"");rows.push(r);
   });
   return rows;
 }
 
-function exportXls(boring){
+function exportXls(b){
   const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(buildRows(boring));
-  ws["!cols"]=[{wch:22},{wch:20},{wch:12},{wch:12},{wch:18},...Array(maxDay(boring)).fill({wch:7})];
-  XLSX.utils.book_append_sheet(wb,ws,"Boring "+boring);XLSX.writeFile(wb,"Awell-tidsplan-"+boring+".xlsx");
+  const ws=XLSX.utils.aoa_to_sheet(buildRows(b));
+  ws["!cols"]=[{wch:4},{wch:28},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:8})];
+  XLSX.utils.book_append_sheet(wb,ws,"Boring "+b);XLSX.writeFile(wb,"Awell-tidsplan-"+b+".xlsx");
 }
 
 function exportAll(){
   const wb=XLSX.utils.book_new();
   BORINGER.forEach(b=>{
     const ws=XLSX.utils.aoa_to_sheet(buildRows(b));
-    ws["!cols"]=[{wch:22},{wch:20},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:7})];
+    ws["!cols"]=[{wch:4},{wch:28},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:8})];
     XLSX.utils.book_append_sheet(wb,ws,"Boring "+b);
   });
   XLSX.writeFile(wb,"Awell-tidsplan-alle-boringer.xlsx");
