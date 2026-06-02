@@ -284,7 +284,7 @@ function updFooter(fd,tasks,days){
 function startDrag(e,boring,task,type,days,bar,track){
   e.preventDefault();
   const rect=track.getBoundingClientRect();const cw=rect.width/days;
-  drag={boring,task,type,sx:e.clientX,os:task.start,oe:task.end,cw,days};
+  drag={boring,task,type,sx:e.clientX,os:task.start,oe:task.end,cw,days:99};
   document.body.style.cursor=type==="move"?"grabbing":"ew-resize";
   const mv=ev=>{
     if(!drag)return;
