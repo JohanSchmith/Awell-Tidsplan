@@ -262,7 +262,33 @@ function renderSingle(content){
     inp.value=stam[f.key]||"";
     inp.placeholder=f.label;
     inp.oninput=()=>{stam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);};
-    wrap.appendChild(lbl);wrap.appendChild(inp);grid.appendChild(wrap);
+    wrap.appendChild(lbl);wrap.appendChild(inp);
+
+    // Auto-startdato knap for alle boringer undtagen den første
+    if(f.key==="startdato"){
+      const prevIdx=BORINGER.indexOf(b)-1;
+      if(prevIdx>=0){
+        const prevB=BORINGER[prevIdx];
+        const autoBtn=el("button","btn small");
+        autoBtn.style.marginTop="4px";autoBtn.style.width="fit-content";
+        autoBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Efter '+prevB;
+        autoBtn.title="Sæt startdato til første arbejdsdag efter "+prevB+"s sidste dag";
+        autoBtn.onclick=()=>{
+          const prevSD=getStartDate(prevB);
+          if(!prevSD){alert("Sæt først startdato på "+prevB);return;}
+          const prevMax=maxDay(prevB);
+          // last day of prev boring
+          const lastDay=new Date(prevSD);lastDay.setDate(lastDay.getDate()+prevMax-1);
+          // find next workday
+          const next=nextWorkday(lastDay);
+          const iso=next.toISOString().split("T")[0];
+          stam.startdato=iso;inp.value=iso;
+          renderGanttOnly(b);render();
+        };
+        wrap.appendChild(autoBtn);
+      }
+    }
+    grid.appendChild(wrap);
   });
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
 
@@ -462,7 +488,18 @@ function exportImg(b){
 
 function buildRows(b){
   const tasks=state.boringer[b];const days=maxDay(b);const stam=state.stam[b];
-  const rows=[[stam.navn||"Awell Brøndboring"],[stam.beskrivelse||"Boringregenerering"],["Boring: "+(stam.boring||b)],["Startdato: "+(stam.startdato||"—")],["Genereret: "+new Date().toLocaleDateString("da-DK")],[]];
+  const sd=getStartDate(b);
+  const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
+  const rows=[
+    ["Awell Brøndboring — Boringregenerering"],
+    [],
+    ["Projektnavn / Vandværk:", stam.navn||"—"],
+    ["Boring:",                  stam.boring||b],
+    ["Startdato:",               startStr],
+    ["Beskrivelse:",             stam.beskrivelse||"—"],
+    ["Genereret:",               new Date().toLocaleDateString("da-DK")],
+    [],
+  ];
   const h=["#","Aktivitet","Start (dag)","Slut (dag)","Varighed (dage)"];
   for(let d=1;d<=days;d++)h.push(dayLabel(b,d));
   rows.push(h);
@@ -488,6 +525,12 @@ function exportAll(){
     XLSX.utils.book_append_sheet(wb,ws,"Boring "+b);
   });
   XLSX.writeFile(wb,"Awell-tidsplan-alle-boringer.xlsx");
+}
+
+function nextWorkday(date){
+  const d=new Date(date);d.setDate(d.getDate()+1);
+  while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);
+  return d;
 }
 
 render();
