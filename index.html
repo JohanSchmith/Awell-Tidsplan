@@ -135,7 +135,7 @@ function dc(o){return JSON.parse(JSON.stringify(o));}
 let state={tab:"single",active:"B1",boringer:{}};
 BORINGER.forEach(b=>{state.boringer[b]=dc(DEFAULT_TASKS);});
 let drag=null;
-function maxDay(b){return Math.max(...state.boringer[b].map(t=>t.end),10);}
+function maxDay(b){return Math.max(...state.boringer[b].map(t=>t.end));}
 function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
 
 function logoSVG(){
