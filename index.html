@@ -201,7 +201,7 @@ function render(){
     const cb=el("div","card-body");
 
     cb.appendChild(buildGantt(state.active,tasks,maxDay(state.active)+1,true));
-    renderLegend(cb);card.appendChild(cb);content.appendChild(card);
+    card.appendChild(cb);content.appendChild(card);
   } else {
     const card=el("div","card");
     const ch=el("div","card-head");
@@ -223,7 +223,7 @@ function render(){
       inner.appendChild(buildGantt(b,tasks,days,false));
       ov.appendChild(inner);wrap.appendChild(ov);grid.appendChild(wrap);
     });
-    cb.appendChild(grid);renderLegend(cb);card.appendChild(cb);content.appendChild(card);
+    cb.appendChild(grid);card.appendChild(cb);content.appendChild(card);
   }
   root.appendChild(content);
 }
