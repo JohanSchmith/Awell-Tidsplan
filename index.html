@@ -137,7 +137,7 @@ const DEFAULT_TASKS=[
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
 const DEFAULT_STAM={navn:"",beskrivelse:""};
-const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:""};
+const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",andeninfo:"",links:[]};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
@@ -179,10 +179,10 @@ function saveAsNew(){
 }
 function exportProjectFile(){
   const name=state.stam.navn||"Awell-tidsplan";
-  // Strip notat from export
+  // Strip internal notes + links from export
   const cleanBoringStam={};
   Object.keys(state.boringStam).forEach(b=>{
-    const {notat,...rest}=state.boringStam[b];
+    const {notat,hustype,adgang,materiel,andeninfo,links,...rest}=state.boringStam[b];
     cleanBoringStam[b]=rest;
   });
   const data={version:1,boringerList:BORINGER,...state,boringStam:cleanBoringStam};
@@ -317,7 +317,7 @@ function renderProjectList(){
         // Strip notat before export
         try{
           const pd=JSON.parse(p.data);
-          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>delete bs.notat);
+          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>{delete bs.notat;delete bs.hustype;delete bs.adgang;delete bs.materiel;delete bs.andeninfo;delete bs.links;});
           const blob2=new Blob([JSON.stringify(pd)],{type:"application/json"});
           const a=document.createElement("a");
           a.href=URL.createObjectURL(blob2);
@@ -534,17 +534,75 @@ function renderSingle(content){
     grid.appendChild(wrap);
   });
 
-  // Notat felt — per boring, ikke med i eksport
-  const notatWrap=el("div","stam-field full");notatWrap.style.marginTop="8px";
-  const notatLbl=el("label","stam-label");
-  notatLbl.innerHTML='Interne notater <span style="color:var(--muted);font-weight:400;font-size:10px;">(ikke med i eksport)</span>';
-  const notatInp=el("textarea","stam-input textarea");
-  notatInp.placeholder="Skriv interne notater her...";
-  notatInp.value=boringStam.notat||"";
-  notatInp.oninput=()=>{boringStam.notat=notatInp.value;};
-  notatWrap.appendChild(notatLbl);notatWrap.appendChild(notatInp);
-  grid.appendChild(notatWrap);
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
+
+  // Interne noter kort
+  const notesCard=el("div","card");
+  const notesHead=el("div","card-head");
+  const notesTitle=el("div","card-title");notesTitle.textContent="Interne noter";
+  const notesBadge=el("div");notesBadge.style.cssText="font-size:11px;color:var(--muted);";notesBadge.textContent="Ikke med i eksport";
+  notesHead.appendChild(notesTitle);notesHead.appendChild(notesBadge);notesCard.appendChild(notesHead);
+  const notesBody=el("div","card-body");
+  const notesGrid=el("div","stam-grid");
+
+  [
+    {key:"hustype",label:"Hustype"},
+    {key:"adgang",label:"Adgangsforhold"},
+    {key:"materiel",label:"Materielbehov"},
+    {key:"notat",label:"Generelle noter"},
+    {key:"andeninfo",label:"Anden info",full:true},
+  ].forEach(f=>{
+    const wrap=el("div","stam-field"+(f.full?" full":""));
+    const lbl=el("label","stam-label");lbl.textContent=f.label;
+    const inp=el("textarea","stam-input textarea");
+    inp.style.minHeight="52px";
+    inp.placeholder=f.label+"...";
+    inp.value=boringStam[f.key]||"";
+    inp.oninput=()=>{boringStam[f.key]=inp.value;};
+    wrap.appendChild(lbl);wrap.appendChild(inp);notesGrid.appendChild(wrap);
+  });
+  notesBody.appendChild(notesGrid);
+
+  // Links sektion
+  const linksSep=el("div");linksSep.style.cssText="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);";
+  const linksTitle=el("div","stam-label");linksTitle.style.marginBottom="10px";
+  linksTitle.innerHTML='Filer &amp; links <span style="font-weight:400;color:var(--muted)">(OneDrive, SharePoint, mv.)</span>';
+  linksSep.appendChild(linksTitle);
+
+  if(!boringStam.links)boringStam.links=[];
+
+  function renderLinks(){
+    const existing=linksSep.querySelector(".links-list");if(existing)existing.remove();
+    const list=el("div","links-list");list.style.cssText="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;";
+    boringStam.links.forEach((lnk,i)=>{
+      const row=el("div");row.style.cssText="display:flex;gap:6px;align-items:center;";
+      const nameInp=el("input","stam-input");nameInp.style.cssText="flex:1;padding:6px 8px;font-size:12px;";
+      nameInp.placeholder="Beskrivelse";nameInp.value=lnk.name||"";
+      nameInp.oninput=()=>{boringStam.links[i].name=nameInp.value;};
+      const urlInp=el("input","stam-input");urlInp.style.cssText="flex:2;padding:6px 8px;font-size:12px;";
+      urlInp.placeholder="https://...";urlInp.type="url";urlInp.value=lnk.url||"";
+      urlInp.oninput=()=>{boringStam.links[i].url=urlInp.value;};
+      const openBtn=el("button","btn small");
+      openBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+      openBtn.title="Åbn link";openBtn.onclick=()=>{if(lnk.url)window.open(lnk.url,"_blank");};
+      const delBtn=el("button","btn danger small");
+      delBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      delBtn.onclick=()=>{boringStam.links.splice(i,1);renderLinks();};
+      row.appendChild(nameInp);row.appendChild(urlInp);row.appendChild(openBtn);row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+    // After list, insert before addBtn
+    const addBtn=linksSep.querySelector(".add-link-btn");
+    linksSep.insertBefore(list,addBtn);
+  }
+
+  const addLinkBtn=el("button","btn add-link-btn");
+  addLinkBtn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilføj link';
+  addLinkBtn.onclick=()=>{boringStam.links.push({name:"",url:""});renderLinks();};
+  linksSep.appendChild(addLinkBtn);
+  renderLinks();
+  notesBody.appendChild(linksSep);
+  notesCard.appendChild(notesBody);content.appendChild(notesCard);
 
   // Gantt card
   const card=el("div","card");
