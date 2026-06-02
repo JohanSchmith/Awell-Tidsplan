@@ -538,11 +538,26 @@ function renderSingle(content){
 
   // Interne noter kort
   const notesCard=el("div","card");
-  const notesHead=el("div","card-head");
+  const notesHead=el("div","card-head");notesHead.style.cursor="pointer";
+  const notesLeft=el("div");notesLeft.style.cssText="display:flex;align-items:center;gap:10px;";
+  const notesChevron=el("span");notesChevron.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+  notesChevron.style.cssText="color:var(--muted);display:flex;transition:transform .2s;";
   const notesTitle=el("div","card-title");notesTitle.textContent="Interne noter";
+  notesLeft.appendChild(notesChevron);notesLeft.appendChild(notesTitle);
   const notesBadge=el("div");notesBadge.style.cssText="font-size:11px;color:var(--muted);";notesBadge.textContent="Ikke med i eksport";
-  notesHead.appendChild(notesTitle);notesHead.appendChild(notesBadge);notesCard.appendChild(notesHead);
+  notesHead.appendChild(notesLeft);notesHead.appendChild(notesBadge);notesCard.appendChild(notesHead);
   const notesBody=el("div","card-body");
+  // Collapse state — default collapsed
+  const notesKey="notes-open-"+b;
+  const notesOpen=sessionStorage.getItem(notesKey)!=="false"?false:false;
+  notesBody.style.display=notesOpen?"block":"none";
+  notesChevron.style.transform=notesOpen?"rotate(0deg)":"rotate(-90deg)";
+  notesHead.onclick=()=>{
+    const isOpen=notesBody.style.display!=="none";
+    notesBody.style.display=isOpen?"none":"block";
+    notesChevron.style.transform=isOpen?"rotate(-90deg)":"rotate(0deg)";
+    sessionStorage.setItem(notesKey,(!isOpen)+"");
+  };
   const notesGrid=el("div","stam-grid");
 
   [
