@@ -75,10 +75,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .gantt-label-col{width:165px;flex-shrink:0;padding:8px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid var(--border);}
 .gantt-days{flex:1;display:grid;}
 .day-cell{padding:6px 3px;text-align:center;font-size:10px;font-weight:500;color:var(--muted);border-right:1px solid var(--border);}
-.day-cell.weekend{background:#FFF4E6;color:#B05C10;}
 .day-cell:last-child{border-right:none;}
 .day-num{font-size:11px;font-weight:700;display:block;color:var(--text);}
-.day-we{font-size:9px;color:#B05C10;}
 
 .gantt-row{display:flex;border-bottom:1px solid var(--border);align-items:stretch;}
 .gantt-row:last-child{border-bottom:none;}
@@ -86,12 +84,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .row-label{width:165px;flex-shrink:0;padding:7px 12px;font-size:12px;color:var(--text);border-right:1px solid var(--border);display:flex;align-items:center;font-weight:500;}
 .row-track{flex:1;display:grid;position:relative;height:36px;}
 .day-bg{border-right:1px solid var(--border);}
-.day-bg.weekend{background:#FFF8F0;}
+
 .day-bg:last-child{border-right:none;}
 .bar-container{position:absolute;inset:0;pointer-events:none;}
 .bar{position:absolute;top:5px;height:26px;border-radius:5px;cursor:grab;pointer-events:all;display:flex;align-items:center;justify-content:space-between;padding:0 5px;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);}
 .bar:active{cursor:grabbing;}
 .bar:hover{filter:brightness(1.07);}
+.bar.hatched{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.18) 0px,rgba(255,255,255,0.18) 4px,transparent 4px,transparent 10px)!important;}
 .bar-label{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;padding:0 3px;}
 .resize-handle{width:5px;height:16px;border-radius:2px;background:rgba(255,255,255,0.4);flex-shrink:0;cursor:ew-resize;}
 
@@ -201,7 +200,7 @@ function render(){
     card.appendChild(ch);
     const cb=el("div","card-body");
     const info=el("div","info-bar");
-    info.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Træk i kanterne af bjælkerne for at justere. Gul baggrund = weekend.';
+    info.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Træk i kanterne af bjælkerne for at justere start og slut.';
     cb.appendChild(info);
     cb.appendChild(buildGantt(state.active,tasks,maxDay(state.active)+1,true));
     renderLegend(cb);card.appendChild(cb);content.appendChild(card);
@@ -237,8 +236,8 @@ function buildGantt(boring,tasks,days,interactive){
   const hl=el("div","gantt-label-col");hl.textContent="Aktivitet";head.appendChild(hl);
   const hd=el("div","gantt-days");hd.style.gridTemplateColumns=`repeat(${days},1fr)`;
   for(let d=1;d<=days;d++){
-    const dc=el("div","day-cell"+(WE.includes(d)?" weekend":""));
-    dc.innerHTML=`<span class="day-num">${d}</span>`+(WE.includes(d)?`<span class="day-we">WE</span>`:"");
+    const dc=el("div","day-cell");
+    dc.innerHTML=`<span class="day-num">${d}</span>`;
     hd.appendChild(dc);
   }
   head.appendChild(hd);wrap.appendChild(head);
@@ -246,11 +245,12 @@ function buildGantt(boring,tasks,days,interactive){
     const row=el("div","gantt-row");
     const rl=el("div","row-label");rl.textContent=task.label;row.appendChild(rl);
     const track=el("div","row-track");track.style.gridTemplateColumns=`repeat(${days},1fr)`;
-    for(let d=1;d<=days;d++){const bg=el("div","day-bg"+(WE.includes(d)?" weekend":""));track.appendChild(bg);}
+    for(let d=1;d<=days;d++){const bg=el("div","day-bg");track.appendChild(bg);}
     const bc=el("div","bar-container");const cw=100/days;
     const bar=el("div","bar");
     bar.style.left=((task.start-1)*cw)+"%";bar.style.width=((task.end-task.start+1)*cw)+"%";
     bar.style.background=task.color;bar.style.color=task.text;
+    if(task.cat==="Renpumpning")bar.classList.add("hatched");
     bar.title=task.label;
     if(interactive){
       const lh=el("div","resize-handle left");const lb=el("div","bar-label");lb.textContent=task.label;const rh=el("div","resize-handle right");
@@ -277,7 +277,7 @@ function buildGantt(boring,tasks,days,interactive){
 function updFooter(fd,tasks,days){
   fd.innerHTML="";
   for(let d=1;d<=days;d++){
-    const fc=el("div","footer-cell"+(WE.includes(d)?" weekend":""));
+    const fc=el("div","footer-cell");
     const n=tasks.filter(t=>t.start<=d&&t.end>=d).length;
     fc.textContent=n>0?n+"↕":"·";fc.style.color=n>2?"#D85A30":n>0?"#185FA5":"#DDE3EE";fd.appendChild(fc);
   }
@@ -302,10 +302,15 @@ function startDrag(e,boring,task,type,days,bar,track){
 }
 
 function renderLegend(parent){
-  const cats={};DEFAULT_TASKS.forEach(t=>{if(!cats[t.cat])cats[t.cat]=t.color;});
+  const cats={};
+  const boring=state.tab==="single"?state.active:BORINGER[0];
+  state.boringer[boring].forEach(t=>{if(!cats[t.cat])cats[t.cat]={color:t.color,hatched:t.cat==="Renpumpning"};});
   const leg=el("div","legend");
-  Object.entries(cats).forEach(([name,color])=>{
-    const item=el("div","legend-item");const sw=el("div","legend-swatch");sw.style.background=color;
+  Object.entries(cats).forEach(([name,info])=>{
+    const item=el("div","legend-item");
+    const sw=el("div","legend-swatch");
+    sw.style.background=info.color;
+    if(info.hatched)sw.style.backgroundImage="repeating-linear-gradient(45deg,rgba(255,255,255,0.35) 0px,rgba(255,255,255,0.35) 3px,transparent 3px,transparent 7px)";
     item.appendChild(sw);item.appendChild(document.createTextNode(name));leg.appendChild(item);
   });
   parent.appendChild(leg);
