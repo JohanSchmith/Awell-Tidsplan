@@ -135,21 +135,54 @@ const DEFAULT_TASKS=[
   {id:10,label:"Kaptest (efter)",        start:8,end:8, color:"#2B7DC8",cat:"Test"},
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
-const DEFAULT_STAM={navn:"",boring:"",beskrivelse:"",startdato:""};
+const DEFAULT_STAM={navn:"",beskrivelse:""};
+const DEFAULT_BORING_STAM={boring:"",startdato:""};
 const BORINGER=["B1","B2","B3","B4","B5","B6"];
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
-let state={tab:"single",active:"B1",boringer:{},stam:{}};
-BORINGER.forEach(b=>{state.boringer[b]=dc(DEFAULT_TASKS);state.stam[b]=dc(DEFAULT_STAM);state.stam[b].boring=b;});
+let state={tab:"single",active:"B1",boringer:{},stam:dc(DEFAULT_STAM),boringStam:{}};
+BORINGER.forEach(b=>{
+  state.boringer[b]=dc(DEFAULT_TASKS);
+  state.boringStam[b]=dc(DEFAULT_BORING_STAM);
+  state.boringStam[b].boring=b;
+});
 let drag=null;
 let nextId=100;
+
+function saveProject(){
+  try{localStorage.setItem("awell-boringplan",JSON.stringify(state));showToast("Projekt gemt ✓");}
+  catch(e){alert("Kunne ikke gemme: "+e.message);}
+}
+function loadProject(){
+  try{
+    const raw=localStorage.getItem("awell-boringplan");
+    if(!raw){showToast("Ingen gemt data fundet");return;}
+    const saved=JSON.parse(raw);
+    state.stam=saved.stam||dc(DEFAULT_STAM);
+    state.boringStam=saved.boringStam||{};
+    BORINGER.forEach(b=>{
+      if(saved.boringer&&saved.boringer[b])state.boringer[b]=saved.boringer[b];
+      if(!state.boringStam[b])state.boringStam[b]=dc(DEFAULT_BORING_STAM);
+    });
+    state.tab=saved.tab||"single";
+    state.active=saved.active||"B1";
+    render();showToast("Projekt indlæst ✓");
+  }catch(e){alert("Fejl ved indlæsning: "+e.message);}
+}
+function showToast(msg){
+  const t=document.createElement("div");
+  t.textContent=msg;
+  t.style.cssText="position:fixed;bottom:24px;right:24px;background:#1A2233;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:opacity .4s;";
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity="0";setTimeout(()=>t.remove(),400);},2000);
+}
 
 function maxDay(b){return Math.max(...state.boringer[b].map(t=>t.end));}
 function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
 
 // Date helpers
 function getStartDate(b){
-  const d=state.stam[b].startdato;
+  const d=state.boringStam[b]&&state.boringStam[b].startdato;
   if(!d)return null;
   const p=new Date(d);return isNaN(p)?null:p;
 }
@@ -221,7 +254,13 @@ function render(){
     tab.onclick=()=>{state.tab=t;render();};
     tabsEl.appendChild(tab);
   });
-  tbr.appendChild(apt);tbr.appendChild(tabsEl);tb.appendChild(tbr);root.appendChild(tb);
+  tbr.appendChild(apt);tbr.appendChild(tabsEl);
+  const saveBtn=el("button","tab");saveBtn.textContent="💾 Gem";saveBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;margin-left:8px;";
+  saveBtn.onclick=saveProject;
+  const loadBtn=el("button","tab");loadBtn.textContent="📂 Hent";loadBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.3);background:none;color:rgba(255,255,255,0.65);font-size:12px;cursor:pointer;";
+  loadBtn.onclick=loadProject;
+  tbr.appendChild(saveBtn);tbr.appendChild(loadBtn);
+  tb.appendChild(tbr);root.appendChild(tb);
   const content=el("div","content");
   if(state.tab==="single") renderSingle(content);
   else renderOverview(content);
@@ -231,7 +270,8 @@ function render(){
 function renderSingle(content){
   const b=state.active;
   const tasks=state.boringer[b];
-  const stam=state.stam[b];
+  const stam=state.stam;
+  const boringStam=state.boringStam[b];
   const total=maxDay(b);
   const activeDaySet=new Set();tasks.forEach(t=>{for(let d=t.start;d<=t.end;d++)activeDaySet.add(d);});
 
@@ -253,25 +293,39 @@ function renderSingle(content){
   const stamCard=el("div","card");
   const stamHead=el("div","card-head");
   const stamTitle=el("div","card-title");stamTitle.textContent="Stamoplysninger";
-  stamHead.appendChild(stamTitle);stamCard.appendChild(stamHead);
+  const stamNote=el("div");stamNote.style.cssText="font-size:11px;color:var(--muted);";stamNote.textContent="Projektnavn og beskrivelse gælder alle boringer";
+  stamHead.appendChild(stamTitle);stamHead.appendChild(stamNote);stamCard.appendChild(stamHead);
   const stamBody=el("div","card-body");
   const grid=el("div","stam-grid");
+
+  // Shared project fields
   [
-    {key:"navn",label:"Projektnavn / Vandværk",full:false},
-    {key:"boring",label:"Boring",full:false},
-    {key:"startdato",label:"Startdato",full:false,type:"date"},
-    {key:"beskrivelse",label:"Beskrivelse / noter",full:true,textarea:true},
+    {key:"navn",label:"Projektnavn / Vandværk",obj:state.stam,shared:true},
+    {key:"beskrivelse",label:"Beskrivelse / noter",obj:state.stam,shared:true,textarea:true,full:true},
   ].forEach(f=>{
     const wrap=el("div","stam-field"+(f.full?" full":""));
-    const lbl=el("label","stam-label");lbl.textContent=f.label;
+    const lbl=el("label","stam-label");
+    lbl.innerHTML=f.label+' <span style="color:var(--blue);font-size:10px;">● Fælles</span>';
     const inp=el(f.textarea?"textarea":"input","stam-input"+(f.textarea?" textarea":""));
-    if(!f.textarea)inp.type=f.type||"text";
-    inp.value=stam[f.key]||"";
-    inp.placeholder=f.label;
-    inp.oninput=()=>{stam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);};
+    if(!f.textarea)inp.type="text";
+    inp.value=f.obj[f.key]||"";inp.placeholder=f.label;
+    inp.oninput=()=>{f.obj[f.key]=inp.value;};
+    wrap.appendChild(lbl);wrap.appendChild(inp);grid.appendChild(wrap);
+  });
+
+  // Per-boring fields
+  const boringStam=state.boringStam[b];
+  [
+    {key:"boring",label:"Boring (ID/navn)"},
+    {key:"startdato",label:"Startdato",type:"date"},
+  ].forEach(f=>{
+    const wrap=el("div","stam-field");
+    const lbl=el("label","stam-label");lbl.textContent=f.label;
+    const inp=el("input","stam-input");inp.type=f.type||"text";
+    inp.value=boringStam[f.key]||"";inp.placeholder=f.label;
+    inp.oninput=()=>{boringStam[f.key]=inp.value;if(f.key==="startdato")renderGanttOnly(b);};
     wrap.appendChild(lbl);wrap.appendChild(inp);
 
-    // Auto-startdato knap for alle boringer undtagen den første
     if(f.key==="startdato"){
       const prevIdx=BORINGER.indexOf(b)-1;
       if(prevIdx>=0){
@@ -279,17 +333,13 @@ function renderSingle(content){
         const autoBtn=el("button","btn small");
         autoBtn.style.marginTop="4px";autoBtn.style.width="fit-content";
         autoBtn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Efter '+prevB;
-        autoBtn.title="Sæt startdato til første arbejdsdag efter "+prevB+"s sidste dag";
         autoBtn.onclick=()=>{
           const prevSD=getStartDate(prevB);
           if(!prevSD){alert("Sæt først startdato på "+prevB);return;}
-          const prevMax=maxDay(prevB);
-          // last day of prev boring
-          const lastDay=new Date(prevSD);lastDay.setDate(lastDay.getDate()+prevMax-1);
-          // find next workday
+          const lastDay=new Date(prevSD);lastDay.setDate(lastDay.getDate()+maxDay(prevB)-1);
           const next=nextWorkday(lastDay);
           const iso=next.toISOString().split("T")[0];
-          stam.startdato=iso;inp.value=iso;
+          boringStam.startdato=iso;inp.value=iso;
           renderGanttOnly(b);render();
         };
         wrap.appendChild(autoBtn);
@@ -297,6 +347,7 @@ function renderSingle(content){
     }
     grid.appendChild(wrap);
   });
+
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
 
   // Gantt card
@@ -483,12 +534,12 @@ function renderOverview(content){
   const cb=el("div","card-body");
   const grid=el("div","overview-grid");
   BORINGER.forEach(b=>{
-    const tasks=state.boringer[b];const stam=state.stam[b];
+    const tasks=state.boringer[b];const stam=state.stam;const boringStam=state.boringStam[b];
     const wrap=el("div","ov-boring");
     const head=el("div","ov-head");
     const left=el("div");
-    const name=el("div","ov-name");name.textContent=(stam.navn||"Boring "+b)+(stam.boring&&stam.navn?" — "+stam.boring:"");
-    const meta=el("div","ov-meta");meta.textContent=stam.startdato?("Start: "+new Date(stam.startdato).toLocaleDateString("da-DK")):"Ingen startdato";
+    const name=el("div","ov-name");name.textContent=(stam.navn||"Boring "+b)+(boringStam.boring&&stam.navn?" — "+boringStam.boring:"");
+    const meta=el("div","ov-meta");meta.textContent=boringStam.startdato?("Start: "+new Date(boringStam.startdato).toLocaleDateString("da-DK")):"Ingen startdato";
     left.appendChild(name);left.appendChild(meta);
     const dur=el("div","ov-days");dur.textContent=maxDay(b)+" dage";
     head.appendChild(left);head.appendChild(dur);wrap.appendChild(head);
@@ -499,7 +550,8 @@ function renderOverview(content){
 }
 
 function exportImg(b){
-  const stam=state.stam[b];
+  const stam=state.stam;
+  const boringStam=state.boringStam[b];
   const sd=getStartDate(b);
   const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
   const load=()=>{
@@ -512,7 +564,7 @@ function exportImg(b){
     hdr.innerHTML=`
       <div style="font-size:18px;font-weight:700;color:#1A2233;margin-bottom:4px;">${stam.navn||"Awell Brøndboring"}</div>
       <div style="display:flex;gap:24px;font-size:12px;color:#6B7A99;margin-top:6px;">
-        <span><b style="color:#1A2233">Boring:</b> ${stam.boring||b}</span>
+        <span><b style="color:#1A2233">Boring:</b> ${boringStam.boring||b}</span>
         <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
         <span><b style="color:#1A2233">Total dage:</b> ${maxDay(b)}</span>
         ${stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${stam.beskrivelse}</span>`:""}
@@ -530,14 +582,14 @@ function exportImg(b){
 }
 
 function buildRows(b){
-  const tasks=state.boringer[b];const days=maxDay(b);const stam=state.stam[b];
+  const tasks=state.boringer[b];const days=maxDay(b);const stam=state.stam;const boringStam=state.boringStam[b];
   const sd=getStartDate(b);
   const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
   const rows=[
     ["Awell Brøndboring — Boringregenerering"],
     [],
     ["Projektnavn / Vandværk:", stam.navn||"—"],
-    ["Boring:",                  stam.boring||b],
+    ["Boring:",                  boringStam.boring||b],
     ["Startdato:",               startStr],
     ["Beskrivelse:",             stam.beskrivelse||"—"],
     ["Genereret:",               new Date().toLocaleDateString("da-DK")],
