@@ -137,7 +137,7 @@ const DEFAULT_TASKS=[
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
 const DEFAULT_STAM={navn:"",beskrivelse:""};
-const DEFAULT_BORING_STAM={boring:"",startdato:""};
+const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:""};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
@@ -179,7 +179,13 @@ function saveAsNew(){
 }
 function exportProjectFile(){
   const name=state.stam.navn||"Awell-tidsplan";
-  const data={version:1,boringerList:BORINGER,...state};
+  // Strip notat from export
+  const cleanBoringStam={};
+  Object.keys(state.boringStam).forEach(b=>{
+    const {notat,...rest}=state.boringStam[b];
+    cleanBoringStam[b]=rest;
+  });
+  const data={version:1,boringerList:BORINGER,...state,boringStam:cleanBoringStam};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
@@ -308,8 +314,21 @@ function renderProjectList(){
         const blob=new Blob([p.data],{type:"application/json"});
         const a=document.createElement("a");
         a.href=URL.createObjectURL(blob);
-        a.download=(p.name||"projekt").replace(/[^a-zA-Z0-9æøåÆØÅ ]/g,"-")+".json";
-        a.click();URL.revokeObjectURL(a.href);
+        // Strip notat before export
+        try{
+          const pd=JSON.parse(p.data);
+          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>delete bs.notat);
+          const blob2=new Blob([JSON.stringify(pd)],{type:"application/json"});
+          const a=document.createElement("a");
+          a.href=URL.createObjectURL(blob2);
+          a.download=(p.name||"projekt").replace(/[^a-zA-Z0-9æøåÆØÅ ]/g,"-")+".json";
+          a.click();URL.revokeObjectURL(a.href);
+        }catch{
+          const a=document.createElement("a");
+          a.href=URL.createObjectURL(blob);
+          a.download=(p.name||"projekt").replace(/[^a-zA-Z0-9æøåÆØÅ ]/g,"-")+".json";
+          a.click();URL.revokeObjectURL(a.href);
+        }
         showToast("Eksporteret ✓");
       };
       const cardBtns=el("div");cardBtns.style.cssText="display:flex;gap:6px;flex-shrink:0;";
@@ -515,6 +534,16 @@ function renderSingle(content){
     grid.appendChild(wrap);
   });
 
+  // Notat felt — per boring, ikke med i eksport
+  const notatWrap=el("div","stam-field full");notatWrap.style.marginTop="8px";
+  const notatLbl=el("label","stam-label");
+  notatLbl.innerHTML='Interne notater <span style="color:var(--muted);font-weight:400;font-size:10px;">(ikke med i eksport)</span>';
+  const notatInp=el("textarea","stam-input textarea");
+  notatInp.placeholder="Skriv interne notater her...";
+  notatInp.value=boringStam.notat||"";
+  notatInp.oninput=()=>{boringStam.notat=notatInp.value;};
+  notatWrap.appendChild(notatLbl);notatWrap.appendChild(notatInp);
+  grid.appendChild(notatWrap);
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
 
   // Gantt card
