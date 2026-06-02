@@ -141,7 +141,7 @@ const DEFAULT_BORING_STAM={boring:"",startdato:""};
 const BORINGER=["B1","B2","B3","B4","B5","B6"];
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
-let state={tab:"single",active:"B1",boringer:{},stam:dc(DEFAULT_STAM),boringStam:{}};
+let state={tab:"single",active:"B1",boringer:{},stam:dc(DEFAULT_STAM),boringStam:{},currentProjectId:null};
 BORINGER.forEach(b=>{
   state.boringer[b]=dc(DEFAULT_TASKS);
   state.boringStam[b]=dc(DEFAULT_BORING_STAM);
@@ -150,25 +150,129 @@ BORINGER.forEach(b=>{
 let drag=null;
 let nextId=100;
 
-function saveProject(){
-  try{localStorage.setItem("awell-boringplan",JSON.stringify(state));showToast("Projekt gemt ✓");}
-  catch(e){alert("Kunne ikke gemme: "+e.message);}
+// Multi-project storage
+const PROJECTS_KEY="awell-boringplan-projects";
+const CURRENT_KEY="awell-boringplan-current";
+
+function listProjects(){
+  try{return JSON.parse(localStorage.getItem(PROJECTS_KEY)||"[]");}catch{return[];}
 }
-function loadProject(){
+function saveProject(){
   try{
-    const raw=localStorage.getItem("awell-boringplan");
-    if(!raw){showToast("Ingen gemt data fundet");return;}
-    const saved=JSON.parse(raw);
+    const projects=listProjects();
+    const name=state.stam.navn||"Unavngivet projekt";
+    const id=state.currentProjectId||(state.currentProjectId=Date.now()+"");
+    state.currentProjectId=id;
+    const idx=projects.findIndex(p=>p.id===id);
+    const entry={id,name,updated:new Date().toISOString(),data:JSON.stringify(state)};
+    if(idx>=0)projects[idx]=entry;else projects.push(entry);
+    localStorage.setItem(PROJECTS_KEY,JSON.stringify(projects));
+    localStorage.setItem(CURRENT_KEY,id);
+    showToast("Gemt: "+name+" ✓");
+    render();
+  }catch(e){alert("Kunne ikke gemme: "+e.message);}
+}
+function saveAsNew(){
+  state.currentProjectId=Date.now()+"";
+  saveProject();
+}
+function deleteProject(id){
+  const projects=listProjects().filter(p=>p.id!==id);
+  localStorage.setItem(PROJECTS_KEY,JSON.stringify(projects));
+  if(state.currentProjectId===id){state.currentProjectId=null;}
+  showToast("Projekt slettet");
+  renderProjectList();
+}
+function openProject(id){
+  try{
+    const projects=listProjects();
+    const entry=projects.find(p=>p.id===id);
+    if(!entry)return;
+    const saved=JSON.parse(entry.data);
     state.stam=saved.stam||dc(DEFAULT_STAM);
     state.boringStam=saved.boringStam||{};
+    state.boringer=saved.boringer||{};
     BORINGER.forEach(b=>{
-      if(saved.boringer&&saved.boringer[b])state.boringer[b]=saved.boringer[b];
-      if(!state.boringStam[b])state.boringStam[b]=dc(DEFAULT_BORING_STAM);
+      if(!state.boringer[b])state.boringer[b]=dc(DEFAULT_TASKS);
+      if(!state.boringStam[b]){state.boringStam[b]=dc(DEFAULT_BORING_STAM);state.boringStam[b].boring=b;}
     });
     state.tab=saved.tab||"single";
     state.active=saved.active||"B1";
-    render();showToast("Projekt indlæst ✓");
-  }catch(e){alert("Fejl ved indlæsning: "+e.message);}
+    state.currentProjectId=id;
+    localStorage.setItem(CURRENT_KEY,id);
+    render();showToast("Åbnet: "+(state.stam.navn||"Projekt")+" ✓");
+  }catch(e){alert("Fejl: "+e.message);}
+}
+function newProject(){
+  state.stam=dc(DEFAULT_STAM);
+  state.boringStam={};
+  state.boringer={};
+  BORINGER.forEach(b=>{
+    state.boringer[b]=dc(DEFAULT_TASKS);
+    state.boringStam[b]=dc(DEFAULT_BORING_STAM);
+    state.boringStam[b].boring=b;
+  });
+  state.tab="single";state.active="B1";
+  state.currentProjectId=null;
+  render();
+}
+function renderProjectList(){
+  const root=document.getElementById("root");root.innerHTML="";
+  const tb=el("div","topbar");
+  const tbl=el("div","topbar-logo");
+  const lm=el("div");lm.innerHTML=logoSVG();
+  const lt=el("div","logo-text");lt.innerHTML='<span class="logo-awell">Awell</span><span class="logo-sub">Brøndboring</span>';
+  tbl.appendChild(lm);tbl.appendChild(lt);tb.appendChild(tbl);
+  root.appendChild(tb);
+  const content=el("div","content");
+  // Header
+  const hrow=el("div");hrow.style.cssText="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;";
+  const htitle=el("div");htitle.style.cssText="font-size:20px;font-weight:700;color:var(--text);";htitle.textContent="Mine projekter";
+  const newBtn=el("button","btn primary");
+  newBtn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nyt projekt';
+  newBtn.onclick=newProject;
+  hrow.appendChild(htitle);hrow.appendChild(newBtn);content.appendChild(hrow);
+  const projects=listProjects();
+  if(!projects.length){
+    const empty=el("div","card");
+    const eb=el("div","card-body");
+    eb.style.cssText="text-align:center;padding:40px;color:var(--muted);";
+    eb.innerHTML='<div style="font-size:32px;margin-bottom:12px;">📋</div><div style="font-size:14px;font-weight:500;margin-bottom:8px;">Ingen gemte projekter</div><div style="font-size:12px;">Klik "Nyt projekt" for at komme i gang</div>';
+    empty.appendChild(eb);content.appendChild(empty);
+  } else {
+    const grid=el("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;";
+    projects.slice().reverse().forEach(p=>{
+      const card=el("div","card");card.style.cursor="pointer";
+      card.style.transition="box-shadow .15s";
+      card.onmouseenter=()=>card.style.boxShadow="0 4px 16px rgba(43,125,200,0.18)";
+      card.onmouseleave=()=>card.style.boxShadow="";
+      const ch=el("div","card-head");ch.style.cursor="pointer";
+      const ct=el("div");ct.style.cssText="flex:1;min-width:0;";
+      const cn=el("div");cn.style.cssText="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+      cn.textContent=p.name||"Unavngivet projekt";
+      const cd=el("div");cd.style.cssText="font-size:11px;color:var(--muted);margin-top:2px;";
+      cd.textContent="Sidst gemt: "+new Date(p.updated).toLocaleDateString("da-DK",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      ct.appendChild(cn);ct.appendChild(cd);
+      const delBtn=el("button","btn danger small");
+      delBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+      delBtn.title="Slet projekt";
+      delBtn.onclick=e=>{e.stopPropagation();if(confirm("Slet \""+p.name+"\"?"))deleteProject(p.id);};
+      ch.appendChild(ct);ch.appendChild(delBtn);card.appendChild(ch);
+      card.onclick=()=>openProject(p.id);
+      const cb=el("div","card-body");cb.style.paddingTop="10px";
+      try{
+        const d=JSON.parse(p.data);
+        const boringer=Object.keys(d.boringer||{});
+        const meta=el("div");meta.style.cssText="font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;";
+        meta.innerHTML='<span>'+boringer.length+' boringer</span>';
+        if(d.stam&&d.stam.beskrivelse){const desc=el("div");desc.style.cssText="font-size:12px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";desc.textContent=d.stam.beskrivelse;cb.appendChild(desc);}
+        cb.appendChild(meta);
+      }catch{}
+      card.appendChild(cb);grid.appendChild(card);
+    });
+    content.appendChild(grid);
+  }
+  root.appendChild(content);
 }
 function showToast(msg){
   const t=document.createElement("div");
@@ -247,7 +351,8 @@ function render(){
   const lt=el("div","logo-text");lt.innerHTML='<span class="logo-awell">Awell</span><span class="logo-sub">Brøndboring</span>';
   tbl.appendChild(lm);tbl.appendChild(lt);tb.appendChild(tbl);
   const tbr=el("div","topbar-right");
-  const apt=el("div","topbar-apptitle");apt.textContent="Boringregenerering";
+  const apt=el("div","topbar-apptitle");
+  apt.textContent=state.stam.navn?"Boringregenerering · "+state.stam.navn:"Boringregenerering";
   const tabsEl=el("div","tabs");
   ["single","overview"].forEach(t=>{
     const tab=el("button","tab"+(state.tab===t?" active":""));
@@ -256,11 +361,13 @@ function render(){
     tabsEl.appendChild(tab);
   });
   tbr.appendChild(apt);tbr.appendChild(tabsEl);
-  const saveBtn=el("button","tab");saveBtn.textContent="💾 Gem";saveBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;margin-left:8px;";
+  const projBtn=el("button","tab");projBtn.textContent="📋 Projekter";projBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.3);background:none;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;margin-left:8px;";
+  projBtn.onclick=renderProjectList;
+  const saveBtn=el("button","tab");saveBtn.textContent="💾 Gem";saveBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;";
   saveBtn.onclick=saveProject;
-  const loadBtn=el("button","tab");loadBtn.textContent="📂 Hent";loadBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.3);background:none;color:rgba(255,255,255,0.65);font-size:12px;cursor:pointer;";
-  loadBtn.onclick=loadProject;
-  tbr.appendChild(saveBtn);tbr.appendChild(loadBtn);
+  const saveNewBtn=el("button","tab");saveNewBtn.textContent="+ Gem kopi";saveNewBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.25);background:none;color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;";
+  saveNewBtn.onclick=saveAsNew;
+  tbr.appendChild(projBtn);tbr.appendChild(saveBtn);tbr.appendChild(saveNewBtn);
   tb.appendChild(tbr);root.appendChild(tb);
   const content=el("div","content");
   if(state.tab==="single") renderSingle(content);
@@ -628,7 +735,10 @@ function nextWorkday(date){
   return d;
 }
 
-try{render();}catch(e){console.error("Render error:",e);document.getElementById("root").innerHTML='<div style="padding:40px;color:#c0392b;font-family:Inter,sans-serif"><b>Fejl ved indlæsning:</b> '+e.message+'</div>';}
+try{
+  if(listProjects().length>0){renderProjectList();}
+  else{render();}
+}catch(e){console.error("Render error:",e);document.getElementById("root").innerHTML='<div style="padding:40px;color:#c0392b;font-family:Inter,sans-serif"><b>Fejl ved indlæsning:</b> '+e.message+'</div>';}
 </script>
 </body>
 </html>
