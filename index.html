@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Awell Boringplan">
 <link rel="apple-touch-icon" href="/icon-boringplan.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -121,6 +121,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <body>
 <div class="app" id="root"></div>
 <script>
+window.onerror=function(msg,src,line,col,err){document.getElementById("root").innerHTML='<div style="padding:40px;font-family:sans-serif;color:#c0392b"><b>App-fejl:</b> '+msg+'<br><small>'+src+':'+(line||'')+'</small></div>';return true;};
 const COLORS=["#1D9E75","#2B7DC8","#534AB7","#D85A30","#BA7517","#185FA5","#3B6D11","#9B4DA0","#C0392B","#16A085","#E67E22","#7F8C8D"];
 const DEFAULT_TASKS=[
   {id:1,label:"Anstilling",             start:1,end:1, color:"#1D9E75",cat:"Forberedelse"},
@@ -177,7 +178,7 @@ function showToast(msg){
   setTimeout(()=>{t.style.opacity="0";setTimeout(()=>t.remove(),400);},2000);
 }
 
-function maxDay(b){return Math.max(...state.boringer[b].map(t=>t.end));}
+function maxDay(b){const tasks=state.boringer[b];if(!tasks||!tasks.length)return 1;return Math.max(...tasks.map(t=>t.end));}
 function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
 
 // Date helpers
@@ -314,7 +315,6 @@ function renderSingle(content){
   });
 
   // Per-boring fields
-  const boringStam=state.boringStam[b];
   [
     {key:"boring",label:"Boring (ID/navn)"},
     {key:"startdato",label:"Startdato",type:"date"},
@@ -628,7 +628,7 @@ function nextWorkday(date){
   return d;
 }
 
-render();
+try{render();}catch(e){console.error("Render error:",e);document.getElementById("root").innerHTML='<div style="padding:40px;color:#c0392b;font-family:Inter,sans-serif"><b>Fejl ved indlæsning:</b> '+e.message+'</div>';}
 </script>
 </body>
 </html>
