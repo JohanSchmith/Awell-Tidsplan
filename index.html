@@ -139,7 +139,7 @@ const DEFAULT_TASKS=[
 const DEFAULT_STAM={navn:"",beskrivelse:""};
 const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",andeninfo:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
-const DFTOKEN="579475e934e75fc3c88dc550084c9b4e";
+const DFTOKEN="3636bf932b8d1f9bd18659524549afc9";
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
 let state={tab:"single",active:"B1",boringer:{},stam:dc(DEFAULT_STAM),boringStam:{},currentProjectId:null};
@@ -991,19 +991,19 @@ function nextWorkday(date){
 
 async function lookupJupiter(dguNumber, boringStam, onDone){
   try{
-    const url=`https://data.geus.dk/JupiterWWW/api/v1/borehole?dguNumber=${encodeURIComponent(dguNumber)}&fmt=json`;
+    const url=`/api/jupiter?dgu=${encodeURIComponent(dguNumber)}`;
     const r=await fetch(url);
     if(!r.ok)throw new Error("HTTP "+r.status);
     const data=await r.json();
+    if(data.error)throw new Error(data.error);
     const b=Array.isArray(data)?data[0]:data;
-    if(!b)throw new Error("Ingen boring fundet");
+    if(!b)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
     boringStam.dgu=dguNumber;
     boringStam.adresse=(b.location?.streetName||"")+" "+(b.location?.houseNumber||"")+(b.location?.city?", "+b.location.city:"");
     if(b.location?.latitude&&b.location?.longitude){
       boringStam.koordinat={lat:b.location.latitude,lng:b.location.longitude};
     }
     boringStam.boredybde=b.totalDepth!=null?b.totalDepth+"":"";
-    // Filter data from screens
     if(b.screens&&b.screens.length){
       const s=b.screens[0];
       boringStam.filterTop=s.top!=null?s.top+"":"";
