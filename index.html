@@ -962,6 +962,12 @@ function buildGantt(b,tasks,interactive){
     const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
     colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
     colorDot.onclick=()=>colorInput.click();
+    const display=el("div","row-label-display");display.textContent=task.label;display.title=task.label;
+    if(interactive){
+      display.onclick=()=>{inp.style.opacity="1";inp.focus();inp.select();};
+      inp.onchange=()=>{task.label=inp.value;inp.title=inp.value;display.textContent=inp.value;display.title=inp.value;};
+      inp.onblur=()=>{inp.style.opacity="0";};
+    } else {inp.readOnly=true;}
     rlw.appendChild(num);rlw.appendChild(inp);rlw.appendChild(display);
     if(interactive){rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
     row.appendChild(rlw);
