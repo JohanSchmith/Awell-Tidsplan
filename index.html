@@ -85,6 +85,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .gantt-row:hover{background:#FAFBFD;}
 .row-label-wrap{width:280px;flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:4px 8px;min-height:36px;}
 .row-num{font-size:10px;color:var(--muted);font-weight:600;width:18px;flex-shrink:0;text-align:right;}
+.row-drag{cursor:grab;color:var(--border);font-size:14px;flex-shrink:0;width:16px;display:flex;align-items:center;user-select:none;line-height:1;}
+.row-drag:active{cursor:grabbing;}
+.gantt-row.drag-over{border-top:2px solid var(--blue);}
+.gantt-row.dragging{opacity:0.4;}
+.color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid rgba(255,255,255,0.5);box-shadow:0 0 0 1px rgba(0,0,0,0.15);}
+.color-picker-input{position:absolute;width:0;height:0;opacity:0;pointer-events:none;}
 .row-label-input{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;background:transparent;padding:2px 4px;border-radius:3px;cursor:pointer;}
 .row-label-input:focus{background:var(--blue-bg);cursor:text;}
 .row-del{opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;color:#c0392b;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;}
@@ -920,10 +926,40 @@ function buildGantt(b,tasks,interactive){
     if(interactive){
       inp.onchange=()=>{task.label=inp.value;};
       inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();};
-    } else {inp.readOnly=true;}
+      // Drag handle
+      const drag=el("div","row-drag");drag.innerHTML="⠿";drag.title="Træk for at flytte";
+      drag.draggable=true;
+      drag.addEventListener("dragstart",e=>{
+        e.dataTransfer.effectAllowed="move";
+        e.dataTransfer.setData("text/plain",task.id+"");
+        row.classList.add("dragging");
+      });
+      drag.addEventListener("dragend",()=>row.classList.remove("dragging"));
+      row.addEventListener("dragover",e=>{e.preventDefault();row.classList.add("drag-over");});
+      row.addEventListener("dragleave",()=>row.classList.remove("drag-over"));
+      row.addEventListener("drop",e=>{
+        e.preventDefault();row.classList.remove("drag-over");
+        const fromId=parseInt(e.dataTransfer.getData("text/plain"));
+        const tasks=state.boringer[b];
+        const fromIdx=tasks.findIndex(t=>t.id===fromId);
+        const toIdx=tasks.findIndex(t=>t.id===task.id);
+        if(fromIdx>=0&&toIdx>=0&&fromIdx!==toIdx){
+          const [moved]=tasks.splice(fromIdx,1);
+          tasks.splice(toIdx,0,moved);
+          render();
+        }
+      });
+      // Color dot
+      const colorDot=el("div","color-dot");colorDot.style.background=task.color;colorDot.title="Vælg farve";
+      const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
+      colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
+      colorDot.onclick=()=>colorInput.click();
+      rlw.appendChild(drag);
+    }
     const del=el("button","row-del");del.innerHTML="×";del.title="Fjern aktivitet";
     del.onclick=()=>{state.boringer[b]=state.boringer[b].filter(t=>t.id!==task.id);render();};
-    rlw.appendChild(num);rlw.appendChild(inp);if(interactive)rlw.appendChild(del);
+    rlw.appendChild(num);rlw.appendChild(inp);
+    if(interactive){rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
     row.appendChild(rlw);
     const track=el("div","row-track");
     track.style.gridTemplateColumns=`repeat(${days},1fr)`;
