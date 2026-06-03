@@ -560,8 +560,12 @@ function renderSingle(content){
     e.preventDefault();
     const dgu=dguInp.value.trim();
     if(!dgu){alert("Indtast et DGU-nummer først");return;}
-    const url=`https://data.geus.dk/geusmap/?lang=da#baslay=baseMapDa&optlay=&extent=defaultview&layers=jupiterskaerm&dgunr=${encodeURIComponent(dgu)}`;
-    window.open(url,"_blank");
+    // Åbn Jupiter boringssøgning - brugeren søger selv på DGU-nr
+    window.open(`https://data.geus.dk/geusmap/?lang=da#baslay=baseMapDa&layers=jupiterskaerm`,"_blank");
+    // Kopier DGU-nummer til clipboard så det er nemt at indsætte
+    navigator.clipboard?.writeText(dgu).catch(()=>{});
+    jupStatus2.textContent="DGU-nummer kopieret til udklipsholderen — indsæt i Jupiter-søgningen";
+    jupStatus2.style.color="var(--blue)";
   };
   dguRow.appendChild(jupLink);
 
@@ -578,7 +582,10 @@ function renderSingle(content){
   };
   dguRow.appendChild(jupMapLink);
   jupiterSep.appendChild(dguRow);
+  jupiterSep.appendChild(jupStatus2);
+  const jupStatus2=el("div");jupStatus2.style.cssText="font-size:11px;color:var(--muted);margin-top:5px;min-height:14px;";
   jupiterSep.appendChild(dguRow);
+  jupiterSep.appendChild(jupStatus2);
 
   // Manuel boringdata felt
   const manualGrid=el("div","stam-grid");manualGrid.style.marginTop="10px";
