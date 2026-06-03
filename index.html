@@ -74,7 +74,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .gantt-label-col{flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;}
 .gantt-label-col.head{width:280px;padding:6px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
 .gantt-label-col.row{width:280px;padding:6px 12px;}
-.week-cell{text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);padding:5px 4px;border-right:1px solid var(--border);}
+.week-cell{text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);padding:5px 4px;border-right:1px solid var(--border);overflow:hidden;white-space:nowrap;}
 .week-cell:last-child{border-right:none;}
 .gantt-date-row{display:flex;background:var(--bg);border-bottom:1px solid var(--border);}
 .date-cell{text-align:center;font-size:9px;color:var(--muted);padding:4px 2px;border-right:1px solid var(--border);font-weight:500;}
@@ -728,10 +728,11 @@ function buildGantt(b,tasks,interactive){
   // Week header row
   const weekRow=el("div","gantt-week-row");
   const wlabel=el("div","gantt-label-col head");wlabel.textContent="Aktivitet";weekRow.appendChild(wlabel);
-  const wdays=el("div");wdays.style.flex="1";wdays.style.display="flex";
+  const wdays=el("div");wdays.style.cssText="flex:1;display:flex;min-width:0;";
   weeks.forEach(w=>{
     const wc=el("div","week-cell");
-    wc.style.flex=(w.to-w.from+1)+" 0 0";
+    const span=w.to-w.from+1;
+    wc.style.cssText=`flex:${span} 0 0;min-width:0;`;
     wc.textContent=w.label;
     wdays.appendChild(wc);
   });
