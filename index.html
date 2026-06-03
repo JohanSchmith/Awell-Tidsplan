@@ -89,16 +89,16 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .row-label-input:focus{background:var(--blue-bg);cursor:text;}
 .row-del{opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;color:#c0392b;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;}
 .gantt-row:hover .row-del{opacity:1;}
-.row-track{flex:1;display:grid;position:relative;height:38px;}
+.row-track{flex:1;display:grid;position:relative;height:44px;}
 .day-bg{border-right:1px solid var(--border);}
 .day-bg:last-child{border-right:none;}
 .bar-container{position:absolute;inset:0;pointer-events:none;}
-.bar{position:absolute;top:6px;height:26px;border-radius:5px;cursor:grab;pointer-events:all;display:flex;align-items:center;justify-content:space-between;padding:0 5px;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);}
+.bar{position:absolute;top:7px;height:30px;border-radius:5px;cursor:grab;pointer-events:all;display:flex;align-items:center;justify-content:space-between;padding:0 5px;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);}
 .bar:active{cursor:grabbing;}
 .bar:hover{filter:brightness(1.07);}
 .bar-label{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;padding:0 3px;}
 .resize-handle{width:5px;height:16px;border-radius:2px;background:rgba(255,255,255,0.4);flex-shrink:0;cursor:ew-resize;}
-.bar.hatched{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.25) 0px,rgba(255,255,255,0.25) 5px,transparent 5px,transparent 12px)!important;}
+.bar.hatched{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M-1,1 l2,-2 M0,10 l10,-10 M9,11 l2,-2' stroke='rgba(255,255,255,0.4)' stroke-width='2'/%3E%3C/svg%3E")!important;}
 .pdf-export .bar-label{display:none!important;}
 .pdf-export .resize-handle{display:none!important;}
 .pdf-export .bar.hatched{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,0.15) 0px,rgba(0,0,0,0.15) 4px,transparent 4px,transparent 10px),repeating-linear-gradient(45deg,rgba(255,255,255,0.3) 0px,rgba(255,255,255,0.3) 4px,transparent 4px,transparent 10px)!important;}
@@ -1031,7 +1031,17 @@ function renderOverview(content){
       const boringEls=grid.querySelectorAll(".ov-boring");
       let first=true;
       for(const el of boringEls){
-        const canvas=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+        // Clone and post-process before rendering
+        const clone=el.cloneNode(true);
+        clone.querySelectorAll(".bar-label").forEach(lb=>lb.style.display="none");
+        clone.querySelectorAll(".resize-handle").forEach(rh=>rh.style.display="none");
+        clone.querySelectorAll(".bar.hatched").forEach(b=>{
+          b.style.backgroundImage="url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M-1,1 l2,-2 M0,10 l10,-10 M9,11 l2,-2' stroke='rgba(255,255,255,0.4)' stroke-width='2'/%3E%3C/svg%3E")";
+        });
+        clone.style.cssText="display:block;width:"+el.offsetWidth+"px;";
+        document.body.appendChild(clone);
+        const canvas=await window.html2canvas(clone,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+        document.body.removeChild(clone);
         if(!first)pdf.addPage();
         first=false;
         const imgData=canvas.toDataURL("image/png");
