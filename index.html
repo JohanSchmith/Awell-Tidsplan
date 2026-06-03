@@ -998,7 +998,7 @@ async function lookupJupiter(dguNumber, boringStam, onDone){
     if(!pr.ok||data.error){
       let detail=data.error||("HTTP "+pr.status);
       if(data.results){
-        detail=data.results.map(r=>r.url.split("?")[0].split("/").pop()+"?"+r.url.split("?")[1]?.substring(0,30)+": "+( r.status||r.error)).join(" | ");
+        detail=data.results.map(r=>(r.service||"?")+": "+(r.status||r.error||"?")).join(" | ");
       }
       throw new Error(detail);
     }
