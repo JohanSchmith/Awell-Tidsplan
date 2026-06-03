@@ -83,7 +83,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .gantt-row{display:flex;border-bottom:1px solid var(--border);align-items:stretch;}
 .gantt-row:last-child{border-bottom:none;}
 .gantt-row:hover{background:#FAFBFD;}
-.row-label-wrap{width:320px;flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:4px 8px;min-height:36px;}
+.row-label-wrap{width:320px;flex-shrink:0;border-right:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:4px 8px;min-height:36px;position:relative;}
 .row-num{font-size:10px;color:var(--muted);font-weight:600;width:18px;flex-shrink:0;text-align:right;}
 .row-drag{cursor:grab;color:var(--border);font-size:14px;flex-shrink:0;width:16px;display:flex;align-items:center;user-select:none;line-height:1;}
 .row-drag:active{cursor:grabbing;}
@@ -91,7 +91,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .gantt-row.dragging{opacity:0.4;}
 .color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid rgba(255,255,255,0.5);box-shadow:0 0 0 1px rgba(0,0,0,0.15);}
 .color-picker-input{position:absolute;width:0;height:0;opacity:0;pointer-events:none;}
-.row-label-input{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;background:transparent;padding:2px 4px;border-radius:3px;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row-label-input{position:absolute;inset:0;border:none;outline:none;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;background:transparent;padding:2px 4px;border-radius:3px;opacity:0;width:100%;cursor:pointer;}
+.row-label-input:focus{opacity:1;cursor:text;}
+.row-label-input:focus+.row-label-display{display:none;}
+.row-label-wrap{position:relative;}
+.row-label-display{flex:1;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-width:0;}
 .row-label-input:focus{background:var(--blue-bg);cursor:text;}
 .row-del{opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;color:#c0392b;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;}
 .gantt-row:hover .row-del{opacity:1;}
@@ -455,9 +459,9 @@ function render(){
   const apt=el("div","topbar-apptitle");
   apt.textContent=state.stam.navn?"Tidsplan · "+state.stam.navn:"Tidsplan";
   const tabsEl=el("div","tabs");
-  ["single","overview"].forEach(t=>{
+  ["single","overview","project"].forEach(t=>{
     const tab=el("button","tab"+(state.tab===t?" active":""));
-    tab.textContent=t==="single"?"Én boring":"Samlet overblik";
+    tab.textContent=t==="single"?"Én boring":t==="overview"?"Detaljeret overblik":"Projektoverblik";
     tab.onclick=()=>{state.tab=t;render();};
     tabsEl.appendChild(tab);
   });
@@ -475,7 +479,8 @@ function render(){
   tb.appendChild(tbr);root.appendChild(tb);
   const content=el("div","content");
   if(state.tab==="single") renderSingle(content);
-  else renderOverview(content);
+  else if(state.tab==="overview") renderOverview(content);
+  else renderProject(content);
   root.appendChild(content);
 }
 
@@ -957,7 +962,7 @@ function buildGantt(b,tasks,interactive){
     const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
     colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
     colorDot.onclick=()=>colorInput.click();
-    rlw.appendChild(num);rlw.appendChild(inp);
+    rlw.appendChild(num);rlw.appendChild(inp);rlw.appendChild(display);
     if(interactive){rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
     row.appendChild(rlw);
     const track=el("div","row-track");
@@ -1300,6 +1305,156 @@ function exportAll(){
     XLSX.utils.book_append_sheet(wb,ws,state.boringStam[b]?.boring||"Boring "+b);
   });
   XLSX.writeFile(wb,"Awell-tidsplan-alle-boringer.xlsx");
+}
+
+
+function renderProject(content){
+  const card=el("div","card");
+  const ch=el("div","card-head");
+  const ct=el("div","card-title");ct.textContent="Projektoverblik";
+  const bPdf=el("button","btn");
+  bPdf.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>PDF';
+  bPdf.onclick=()=>exportProjectOverviewPdf();
+  ch.appendChild(ct);ch.appendChild(bPdf);card.appendChild(ch);
+  const cb=el("div","card-body");
+  cb.id="project-overview-gantt";
+
+  // Collect all borings with start/end dates
+  const boringData=BORINGER.map(b=>{
+    const bs=state.boringStam[b];
+    const sd=getStartDate(b);
+    const days=maxDay(b);
+    const ed=sd?new Date(sd.getTime()+(days-1)*86400000):null;
+    return {b,bs,sd,ed,days,label:bs.boring||b};
+  }).filter(d=>d.sd);
+
+  if(!boringData.length){
+    const empty=el("div");empty.style.cssText="text-align:center;padding:40px;color:var(--muted);font-size:13px;";
+    empty.textContent="Ingen boringer med startdato. Tilføj startdatoer i stamoplysningerne.";
+    cb.appendChild(empty);card.appendChild(cb);content.appendChild(card);return;
+  }
+
+  // Find overall date range
+  const allDates=boringData.flatMap(d=>[d.sd,d.ed]);
+  const minDate=new Date(Math.min(...allDates.map(d=>d.getTime())));
+  const maxDate=new Date(Math.max(...allDates.map(d=>d.getTime())));
+  // Extend to week boundaries
+  minDate.setDate(minDate.getDate()-minDate.getDay()+1); // Monday
+  maxDate.setDate(maxDate.getDate()+(7-maxDate.getDay())); // Sunday
+  const totalDays=Math.round((maxDate-minDate)/86400000)+1;
+
+  // Build week groups
+  const weeks=[];let cur=new Date(minDate);
+  while(cur<=maxDate){
+    const wn=getWeekNumber(cur);
+    const mon=cur.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
+    const existing=weeks.find(w=>w.wn===wn&&w.year===cur.getFullYear());
+    if(!existing)weeks.push({wn,year:cur.getFullYear(),label:"Uge "+wn,mon,from:new Date(cur),days:0});
+    weeks[weeks.length-1].days++;
+    cur.setDate(cur.getDate()+1);
+  }
+
+  // Build gantt
+  const wrap=el("div","gantt-wrap");wrap.style.minWidth="500px";
+  const scroll=el("div","gantt-scroll");
+
+  // Week header
+  const weekRow=el("div","gantt-week-row");
+  const wl=el("div","gantt-label-col head");wl.style.width="160px";weekRow.appendChild(wl);
+  const wg=el("div");wg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${totalDays},1fr);`;
+  let lastWk=null;
+  for(let d=0;d<totalDays;d++){
+    const dt=new Date(minDate);dt.setDate(dt.getDate()+d);
+    const wn=getWeekNumber(dt);
+    const wc=el("div");
+    wc.style.cssText="border-right:1px solid var(--border);padding:3px 4px;font-size:10px;font-weight:700;color:var(--blue-dark);text-align:center;overflow:hidden;";
+    if(d===totalDays-1)wc.style.borderRight="none";
+    wc.textContent=wn!==lastWk?"Uge "+wn:"";lastWk=wn;
+    wg.appendChild(wc);
+  }
+  weekRow.appendChild(wg);wrap.appendChild(weekRow);
+
+  // Date header (show only Mondays)
+  const dateRow=el("div","gantt-date-row");
+  const dl=el("div","gantt-label-col head");dl.style.cssText="width:160px;height:22px;";dateRow.appendChild(dl);
+  const dg=el("div");dg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${totalDays},1fr);`;
+  for(let d=0;d<totalDays;d++){
+    const dt=new Date(minDate);dt.setDate(dt.getDate()+d);
+    const dc=el("div","date-cell");
+    const isWeekend=dt.getDay()===0||dt.getDay()===6;
+    dc.style.color=isWeekend?"#bbb":"var(--muted)";
+    dc.textContent=dt.getDay()===1?dt.toLocaleDateString("da-DK",{day:"2-digit",month:"short"}):"";
+    dg.appendChild(dc);
+  }
+  dateRow.appendChild(dg);wrap.appendChild(dateRow);
+
+  // One row per boring
+  boringData.forEach(({b,bs,sd,ed,days,label})=>{
+    const row=el("div","gantt-row");
+    const rl=el("div");rl.style.cssText="width:160px;flex-shrink:0;padding:7px 12px;font-size:13px;font-weight:600;color:var(--text);border-right:1px solid var(--border);display:flex;align-items:center;";
+    rl.textContent=label;
+    row.appendChild(rl);
+    const track=el("div","row-track");
+    track.style.gridTemplateColumns=`repeat(${totalDays},1fr)`;
+    for(let d=0;d<totalDays;d++){const bg=el("div","day-bg");track.appendChild(bg);}
+    const bc=el("div","bar-container");
+    const startOff=Math.round((sd-minDate)/86400000);
+    const barW=days;
+    const cw=100/totalDays;
+    const bar=el("div","bar");
+    bar.style.left=(startOff*cw)+"%";
+    bar.style.width=(barW*cw)+"%";
+    bar.style.background=state.boringer[b]?.[0]?.color||"var(--blue)";
+    bar.style.color="#fff";
+    // Label inside bar
+    const lbl=el("div","bar-label");
+    lbl.style.padding="0 8px";
+    lbl.style.fontSize="11px";
+    lbl.textContent=label+" ("+days+" dage)";
+    bar.appendChild(lbl);
+    bc.appendChild(bar);track.appendChild(bc);row.appendChild(track);
+    wrap.appendChild(row);
+  });
+
+  scroll.appendChild(wrap);cb.appendChild(scroll);card.appendChild(cb);content.appendChild(card);
+}
+
+function exportProjectOverviewPdf(){
+  const grid=document.getElementById("project-overview-gantt");
+  if(!grid){alert("Kunne ikke finde overblik");return;}
+  const loadLibs=(cb)=>{
+    const loadH2C=()=>{if(window.html2canvas){loadJsPDF();}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";s.onload=loadJsPDF;document.head.appendChild(s);}};
+    const loadJsPDF=()=>{if(window.jspdf){cb();}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=cb;document.head.appendChild(s);}};
+    loadH2C();
+  };
+  loadLibs(()=>{
+    const wrapper=document.createElement("div");
+    wrapper.style.cssText="background:#fff;padding:20px;font-family:Inter,sans-serif;display:inline-block;min-width:100%;";
+    const hdr=document.createElement("div");hdr.style.cssText="margin-bottom:16px;";
+    hdr.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <img src="${AWELL_LOGO}" style="height:80px;width:auto;" />
+        <div style="font-size:10px;color:#6B7A99;text-align:right;">Projektoverblik<br>${new Date().toLocaleDateString("da-DK")}</div>
+      </div>
+      <div style="height:1px;background:#2078C3;margin-bottom:10px;"></div>
+      <div style="font-size:15px;font-weight:700;color:#1A2233;margin-bottom:4px;">${state.stam.navn||"Awell Brøndboring"}</div>
+      ${state.stam.projektnr?`<div style="font-size:11px;color:#6B7A99;margin-bottom:8px;">Projektnr: ${state.stam.projektnr}</div>`:""}`;
+    const clone=grid.cloneNode(true);
+    wrapper.appendChild(hdr);wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(canvas=>{
+      document.body.removeChild(wrapper);
+      const imgData=canvas.toDataURL("image/png");
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const pdfW=pdf.internal.pageSize.getWidth();const pdfH=pdf.internal.pageSize.getHeight();
+      const margin=10;const maxW=pdfW-margin*2;const maxH=pdfH-margin*2;
+      const ratio=Math.min(maxW/(canvas.width/2.834),maxH/(canvas.height/2.834));
+      const w=(canvas.width/2.834)*ratio;const h=(canvas.height/2.834)*ratio;
+      pdf.addImage(imgData,"PNG",margin+(maxW-w)/2,margin+(maxH-h)/2,w,h);
+      pdf.save("Awell-projektoverblik.pdf");
+    });
+  });
 }
 
 function nextWorkday(date){
