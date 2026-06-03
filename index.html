@@ -731,14 +731,17 @@ function buildGantt(b,tasks,interactive){
   const dnlabel=el("div","gantt-label-col head");dnlabel.style.height="22px";dayNameRow.appendChild(dnlabel);
   const dnGrid=el("div");dnGrid.style.flex="1";dnGrid.style.display="grid";
   dnGrid.style.gridTemplateColumns=`repeat(${days},1fr)`;
-  const weekGroups=getWeekGroups(b,days);
+  let lastWeek=null;
   for(let d=1;d<=days;d++){
     const dc=el("div","date-cell"+(isWeekend(b,d)?" weekend":""));
     dc.style.color=isWeekend(b,d)?"#bbb":"var(--text)";
-    // Show week number on first day of each week
-    const wg=weekGroups.find(w=>w.from===d);
-    if(wg){
-      dc.innerHTML=`<span style="display:block;font-size:9px;font-weight:700;color:var(--blue-dark);line-height:1.1;">${wg.label}</span><span style="font-size:9px;font-weight:600;">${dayName(b,d)}</span>`;
+    const sd=getStartDate(b);
+    let weekNum=null;
+    if(sd){const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);weekNum=getWeekNumber(dt);}
+    else{weekNum=Math.ceil(d/7);}
+    if(weekNum!==lastWeek){
+      dc.innerHTML=`<span style="display:block;font-size:9px;font-weight:700;color:var(--blue-dark);line-height:1.2;">Uge ${weekNum}</span><span style="font-size:9px;font-weight:600;">${dayName(b,d)}</span>`;
+      lastWeek=weekNum;
     } else {
       dc.style.fontWeight="600";dc.style.fontSize="10px";
       dc.textContent=dayName(b,d);
