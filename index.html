@@ -544,8 +544,10 @@ function renderSingle(content){
   const jupiterRow=el("div");jupiterRow.style.cssText="display:flex;gap:8px;align-items:center;margin-bottom:10px;";
   const dguInp=el("input","stam-input");dguInp.style.cssText="flex:1;padding:6px 10px;font-size:12px;";
   dguInp.placeholder="DGU-nummer fx 199.1081";dguInp.type="text";dguInp.value=boringStam.dgu||"";
+  const dguHint=el("div");dguHint.style.cssText="font-size:10px;color:var(--muted);margin-top:2px;";dguHint.textContent="Format: 216.651 (med punktum)";jupiterSep.appendChild(dguHint);
   const lookupBtn=el("button","btn primary");
   lookupBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent fra Jupiter';
+      if(err){jupiterStatus.style.color="#c0392b";jupiterStatus.innerHTML="Fejl: "+err.message+(err.detail?"<br><small>"+err.detail+"</small>":"");return;}
   const jupiterStatus=el("div");jupiterStatus.style.cssText="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px;";
 
   const jupiterFields=el("div");jupiterFields.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
@@ -585,6 +587,7 @@ function renderSingle(content){
     lookupJupiter(dgu,boringStam,(err,data)=>{
       lookupBtn.disabled=false;
       lookupBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent fra Jupiter';
+      if(err){jupiterStatus.style.color="#c0392b";jupiterStatus.innerHTML="Fejl: "+err.message+(err.detail?"<br><small>"+err.detail+"</small>":"");return;}
       if(err){jupiterStatus.style.color="#c0392b";jupiterStatus.textContent="Fejl: "+err.message;return;}
       jupiterStatus.style.color="#1D9E75";jupiterStatus.textContent="✓ Data hentet fra Jupiter";
       renderJupiterFields();
