@@ -1325,13 +1325,13 @@ function renderProject(content){
   const cb=el("div","card-body");
   cb.id="project-overview-gantt";
 
-  // Collect all borings with start/end dates
-  const boringData=BORINGER.map(b=>{
+  const boringData=BORINGER.map((b,i)=>{
     const bs=state.boringStam[b];
     const sd=getStartDate(b);
     const days=maxDay(b);
     const ed=sd?new Date(sd.getTime()+(days-1)*86400000):null;
-    return {b,bs,sd,ed,days,label:bs.boring||b};
+    const color=['#2B7DC8', '#1D9E75', '#D85A30', '#534AB7', '#BA7517', '#185FA5', '#3B6D11', '#9B4DA0', '#C0392B', '#16A085'][i%10];
+    return {b,bs,sd,ed,days,label:bs.boring||b,color};
   }).filter(d=>d.sd);
 
   if(!boringData.length){
@@ -1340,85 +1340,89 @@ function renderProject(content){
     cb.appendChild(empty);card.appendChild(cb);content.appendChild(card);return;
   }
 
-  // Find overall date range
   const allDates=boringData.flatMap(d=>[d.sd,d.ed]);
   const minDate=new Date(Math.min(...allDates.map(d=>d.getTime())));
   const maxDate=new Date(Math.max(...allDates.map(d=>d.getTime())));
   // Extend to week boundaries
-  minDate.setDate(minDate.getDate()-minDate.getDay()+1); // Monday
-  maxDate.setDate(maxDate.getDate()+(7-maxDate.getDay())); // Sunday
+  const dow=minDate.getDay();minDate.setDate(minDate.getDate()-(dow===0?6:dow-1));
+  maxDate.setDate(maxDate.getDate()+(maxDate.getDay()===0?0:7-maxDate.getDay()));
   const totalDays=Math.round((maxDate-minDate)/86400000)+1;
 
-  // Build week groups
-  const weeks=[];let cur=new Date(minDate);
-  while(cur<=maxDate){
-    const wn=getWeekNumber(cur);
-    const mon=cur.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
-    const existing=weeks.find(w=>w.wn===wn&&w.year===cur.getFullYear());
-    if(!existing)weeks.push({wn,year:cur.getFullYear(),label:"Uge "+wn,mon,from:new Date(cur),days:0});
-    weeks[weeks.length-1].days++;
-    cur.setDate(cur.getDate()+1);
-  }
-
-  // Build gantt
-  const wrap=el("div","gantt-wrap");wrap.style.minWidth="500px";
-  const scroll=el("div","gantt-scroll");
-
-  // Week header
-  const weekRow=el("div","gantt-week-row");
-  const wl=el("div","gantt-label-col head");wl.style.width="160px";weekRow.appendChild(wl);
-  const wg=el("div");wg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${totalDays},1fr);`;
-  let lastWk=null;
+  // Only show Mondays as columns (1 per week)
+  const mondayOffsets=[];
   for(let d=0;d<totalDays;d++){
     const dt=new Date(minDate);dt.setDate(dt.getDate()+d);
-    const wn=getWeekNumber(dt);
-    const wc=el("div");
-    wc.style.cssText="border-right:1px solid var(--border);padding:3px 4px;font-size:10px;font-weight:700;color:var(--blue-dark);text-align:center;overflow:hidden;";
-    if(d===totalDays-1)wc.style.borderRight="none";
-    wc.textContent=wn!==lastWk?"Uge "+wn:"";lastWk=wn;
-    wg.appendChild(wc);
+    if(dt.getDay()===1)mondayOffsets.push({d,dt});
   }
+  const cols=mondayOffsets.length;
+
+  const scroll=el("div","gantt-scroll");
+  const wrap=el("div","gantt-wrap");wrap.style.minWidth="500px";
+
+  // Month header
+  const monthRow=el("div");monthRow.style.cssText="display:flex;background:#f0f4f8;border-bottom:1px solid var(--border);";
+  const ml=el("div");ml.style.cssText="width:160px;flex-shrink:0;border-right:1px solid var(--border);padding:5px 12px;font-size:10px;font-weight:600;color:var(--muted);";ml.textContent="BORING";
+  monthRow.appendChild(ml);
+  const mg=el("div");mg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${cols},1fr);`;
+  let lastMonth=null;
+  mondayOffsets.forEach(({d,dt},i)=>{
+    const mo=dt.toLocaleDateString("da-DK",{month:"long",year:"numeric"});
+    const mc=el("div");
+    mc.style.cssText="text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);padding:5px 4px;border-right:1px solid var(--border);overflow:hidden;white-space:nowrap;";
+    if(i===cols-1)mc.style.borderRight="none";
+    mc.textContent=mo!==lastMonth?dt.toLocaleDateString("da-DK",{month:"short",year:"numeric"}):"";
+    lastMonth=mo;mg.appendChild(mc);
+  });
+  monthRow.appendChild(mg);wrap.appendChild(monthRow);
+
+  // Week number header
+  const weekRow=el("div");weekRow.style.cssText="display:flex;background:var(--bg);border-bottom:1px solid var(--border);";
+  const wl=el("div");wl.style.cssText="width:160px;flex-shrink:0;border-right:1px solid var(--border);padding:4px 12px;font-size:10px;color:var(--muted);";weekRow.appendChild(wl);
+  const wg=el("div");wg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${cols},1fr);`;
+  mondayOffsets.forEach(({d,dt},i)=>{
+    const wc=el("div");
+    wc.style.cssText="text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:3px 4px;border-right:1px solid var(--border);";
+    if(i===cols-1)wc.style.borderRight="none";
+    wc.textContent="Uge "+getWeekNumber(dt);
+    wg.appendChild(wc);
+  });
   weekRow.appendChild(wg);wrap.appendChild(weekRow);
 
-  // Date header (show only Mondays)
-  const dateRow=el("div","gantt-date-row");
-  const dl=el("div","gantt-label-col head");dl.style.cssText="width:160px;height:22px;";dateRow.appendChild(dl);
-  const dg=el("div");dg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${totalDays},1fr);`;
-  for(let d=0;d<totalDays;d++){
-    const dt=new Date(minDate);dt.setDate(dt.getDate()+d);
-    const dc=el("div","date-cell");
-    const isWeekend=dt.getDay()===0||dt.getDay()===6;
-    dc.style.color=isWeekend?"#bbb":"var(--muted)";
-    dc.textContent=dt.getDay()===1?dt.toLocaleDateString("da-DK",{day:"2-digit",month:"short"}):"";
-    dg.appendChild(dc);
-  }
-  dateRow.appendChild(dg);wrap.appendChild(dateRow);
+  // Date header
+  const dateRow=el("div");dateRow.style.cssText="display:flex;background:var(--bg);border-bottom:1px solid var(--border);";
+  const drl=el("div");drl.style.cssText="width:160px;flex-shrink:0;border-right:1px solid var(--border);padding:4px 12px;font-size:10px;color:var(--muted);";dateRow.appendChild(drl);
+  const drg=el("div");drg.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${cols},1fr);`;
+  mondayOffsets.forEach(({d,dt},i)=>{
+    const dc=el("div");
+    dc.style.cssText="text-align:center;font-size:10px;color:var(--muted);padding:3px 4px;border-right:1px solid var(--border);white-space:nowrap;";
+    if(i===cols-1)dc.style.borderRight="none";
+    dc.textContent=dt.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
+    drg.appendChild(dc);
+  });
+  dateRow.appendChild(drg);wrap.appendChild(dateRow);
 
-  // One row per boring
-  boringData.forEach(({b,bs,sd,ed,days,label})=>{
+  // Boring rows
+  boringData.forEach(({b,bs,sd,ed,days,label,color})=>{
     const row=el("div","gantt-row");
-    const rl=el("div");rl.style.cssText="width:160px;flex-shrink:0;padding:7px 12px;font-size:13px;font-weight:600;color:var(--text);border-right:1px solid var(--border);display:flex;align-items:center;";
-    rl.textContent=label;
-    row.appendChild(rl);
-    const track=el("div","row-track");
-    track.style.gridTemplateColumns=`repeat(${totalDays},1fr)`;
-    for(let d=0;d<totalDays;d++){const bg=el("div","day-bg");track.appendChild(bg);}
-    const bc=el("div","bar-container");
-    const startOff=Math.round((sd-minDate)/86400000);
-    const barW=days;
-    const cw=100/totalDays;
-    const bar=el("div","bar");
-    bar.style.left=(startOff*cw)+"%";
-    bar.style.width=(barW*cw)+"%";
-    bar.style.background=state.boringer[b]?.[0]?.color||"var(--blue)";
-    bar.style.color="#fff";
-    // Label inside bar
-    const lbl=el("div","bar-label");
-    lbl.style.padding="0 8px";
-    lbl.style.fontSize="11px";
-    lbl.textContent=label+" ("+days+" dage)";
-    bar.appendChild(lbl);
-    bc.appendChild(bar);track.appendChild(bc);row.appendChild(track);
+    const rl=el("div");rl.style.cssText="width:160px;flex-shrink:0;padding:8px 12px;font-size:13px;font-weight:600;color:var(--text);border-right:1px solid var(--border);display:flex;align-items:center;";
+    rl.textContent=label;row.appendChild(rl);
+
+    const track=el("div");track.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${cols},1fr);position:relative;height:40px;`;
+    mondayOffsets.forEach((_,i)=>{
+      const bg=el("div");bg.style.cssText="border-right:1px solid var(--border);";
+      if(i===cols-1)bg.style.borderRight="none";
+      track.appendChild(bg);
+    });
+
+    // Calculate bar position in week columns
+    const startCol=(sd-minDate)/86400000/7;
+    const widthCols=days/7;
+    const bc=el("div");bc.style.cssText="position:absolute;inset:0;pointer-events:none;";
+    const bar=el("div");
+    bar.style.cssText=`position:absolute;top:6px;height:28px;border-radius:6px;left:${(startCol/cols*100).toFixed(3)}%;width:${(widthCols/cols*100).toFixed(3)}%;background:${color};color:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.2);white-space:nowrap;overflow:hidden;`;
+    bar.textContent=label;
+    bc.appendChild(bar);track.appendChild(bc);
+    row.appendChild(track);
     wrap.appendChild(row);
   });
 
