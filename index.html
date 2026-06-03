@@ -726,26 +726,35 @@ function buildGantt(b,tasks,interactive){
   wrap.id="gantt-"+b;
 
 
+  // Week row — same grid as day columns so it aligns perfectly
+  const weekRow=el("div");weekRow.style.cssText="display:flex;background:#f0f4f8;border-bottom:1px solid var(--border);";
+  const wlabel=el("div","gantt-label-col head");wlabel.style.cssText="width:280px;flex-shrink:0;border-right:1px solid var(--border);height:22px;";weekRow.appendChild(wlabel);
+  const wGrid=el("div");wGrid.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${days},1fr);`;
+  let lastWk=null;
+  for(let d=1;d<=days;d++){
+    const sd=getStartDate(b);
+    let wkNum;
+    if(sd){const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);wkNum=getWeekNumber(dt);}
+    else{wkNum=Math.ceil(d/7);}
+    const wc=el("div");
+    wc.style.cssText="border-right:1px solid var(--border);padding:3px 4px;font-size:10px;font-weight:700;color:var(--blue-dark);text-align:center;overflow:hidden;";
+    if(d===days)wc.style.borderRight="none";
+    wc.textContent=wkNum!==lastWk?"Uge "+wkNum:"";
+    lastWk=wkNum;
+    wGrid.appendChild(wc);
+  }
+  weekRow.appendChild(wGrid);wrap.appendChild(weekRow);
+
   // Day name row (Man, Tirs, Ons...)
   const dayNameRow=el("div","gantt-date-row");
   const dnlabel=el("div","gantt-label-col head");dnlabel.style.height="22px";dayNameRow.appendChild(dnlabel);
   const dnGrid=el("div");dnGrid.style.flex="1";dnGrid.style.display="grid";
   dnGrid.style.gridTemplateColumns=`repeat(${days},1fr)`;
-  let lastWeek=null;
   for(let d=1;d<=days;d++){
     const dc=el("div","date-cell"+(isWeekend(b,d)?" weekend":""));
+    dc.style.fontWeight="600";dc.style.fontSize="10px";
     dc.style.color=isWeekend(b,d)?"#bbb":"var(--text)";
-    const sd=getStartDate(b);
-    let weekNum=null;
-    if(sd){const dt=new Date(sd);dt.setDate(dt.getDate()+d-1);weekNum=getWeekNumber(dt);}
-    else{weekNum=Math.ceil(d/7);}
-    if(weekNum!==lastWeek){
-      dc.innerHTML=`<span style="display:block;font-size:9px;font-weight:700;color:var(--blue-dark);line-height:1.2;">Uge ${weekNum}</span><span style="font-size:9px;font-weight:600;">${dayName(b,d)}</span>`;
-      lastWeek=weekNum;
-    } else {
-      dc.style.fontWeight="600";dc.style.fontSize="10px";
-      dc.textContent=dayName(b,d);
-    }
+    dc.textContent=dayName(b,d);
     dnGrid.appendChild(dc);
   }
   dayNameRow.appendChild(dnGrid);wrap.appendChild(dayNameRow);
