@@ -728,14 +728,24 @@ function buildGantt(b,tasks,interactive){
   // Week header row
   const weekRow=el("div","gantt-week-row");
   const wlabel=el("div","gantt-label-col head");wlabel.textContent="Aktivitet";weekRow.appendChild(wlabel);
-  // Use same grid as day columns so week headers align perfectly
+  // One cell per day, show week label only on first day of each week
   const wdays=el("div");wdays.style.cssText=`flex:1;display:grid;grid-template-columns:repeat(${days},1fr);min-width:0;`;
-  weeks.forEach(w=>{
+  for(let d=1;d<=days;d++){
+    const week=weeks.find(w=>w.from<=d&&w.to>=d);
+    const isFirst=week&&week.from===d;
     const wc=el("div","week-cell");
-    wc.style.cssText=`grid-column:span ${w.to-w.from+1};`;
-    wc.textContent=w.label;
+    wc.style.cssText="border-right:1px solid var(--border);padding:5px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);overflow:visible;white-space:nowrap;";
+    if(d===days)wc.style.borderRight="none";
+    if(isFirst){
+      // Show label spanning the week visually via absolute positioned span
+      const lbl=el("span");
+      lbl.style.cssText=`position:absolute;left:0;width:${((week.to-week.from+1)/days*100).toFixed(2)}%;text-align:center;pointer-events:none;font-size:10px;font-weight:700;color:var(--blue-dark);`;
+      lbl.textContent=week.label;
+      wc.style.position="relative";
+      wc.appendChild(lbl);
+    }
     wdays.appendChild(wc);
-  });
+  }
   weekRow.appendChild(wdays);wrap.appendChild(weekRow);
 
   // Day name row (Man, Tirs, Ons...)
