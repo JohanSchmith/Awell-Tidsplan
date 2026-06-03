@@ -1044,21 +1044,18 @@ function renderOverview(content){
         const hdr=document.createElement("div");
         hdr.style.cssText="margin-bottom:16px;font-family:Inter,sans-serif;";
         hdr.innerHTML=`
-          <!-- Top blue bar with logo -->
-          <div style="background:#2078C3;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin:-20px -20px 16px -20px;">
-            <img src=""+AWELL_LOGO+"" style="height:48px;width:auto;" />
-            <div style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:500;">Boringregenerering · Tidsplan</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <img src="${AWELL_LOGO}" style="height:48px;width:auto;" />
+            <div style="font-size:10px;color:#6B7A99;text-align:right;">Boringregenerering · Tidsplan<br>${new Date().toLocaleDateString("da-DK")}</div>
           </div>
-          <!-- Project info -->
-          <div style="padding:0 4px;border-left:4px solid #2078C3;margin-bottom:12px;">
-            <div style="font-size:16px;font-weight:700;color:#1A2233;margin-bottom:5px;">${state.stam.navn||"Awell Brøndboring"}</div>
-            <div style="display:flex;gap:20px;font-size:11px;color:#6B7A99;flex-wrap:wrap;">
-              <span><b style="color:#1A2233;">Boring:</b> ${bs.boring||boringId}</span>
-              <span><b style="color:#1A2233;">Startdato:</b> ${startStr}</span>
-              <span><b style="color:#1A2233;">Total dage:</b> ${maxDay(boringId)}</span>
-              ${state.stam.projektnr?`<span><b style="color:#1A2233;">Projektnr:</b> ${state.stam.projektnr}</span>`:""}
-              ${state.stam.beskrivelse?`<span style="color:#6B7A99;font-style:italic;">${state.stam.beskrivelse}</span>`:""}
-            </div>
+          <div style="height:1px;background:#2078C3;margin-bottom:10px;"></div>
+          <div style="font-size:15px;font-weight:700;color:#1A2233;margin-bottom:4px;">${state.stam.navn||"Awell Brøndboring"}</div>
+          <div style="display:flex;gap:16px;font-size:11px;color:#6B7A99;flex-wrap:wrap;margin-bottom:12px;">
+            <span><b style="color:#1A2233;">Boring:</b> ${bs.boring||boringId}</span>
+            <span><b style="color:#1A2233;">Startdato:</b> ${startStr}</span>
+            <span><b style="color:#1A2233;">Total dage:</b> ${maxDay(boringId)}</span>
+            ${state.stam.projektnr?`<span><b style="color:#1A2233;">Projektnr:</b> ${state.stam.projektnr}</span>`:""}
+            ${state.stam.beskrivelse?`<span style="color:#6B7A99;font-style:italic;">${state.stam.beskrivelse}</span>`:""}
           </div>`;
         const clone=el.cloneNode(true);
         clone.querySelectorAll(".bar-label").forEach(lb=>lb.style.display="none");
@@ -1126,7 +1123,7 @@ function exportPdf(b){
     hdr.style.cssText="margin-bottom:16px;";
     hdr.innerHTML=`
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <img src=""+AWELL_LOGO+"" style="height:48px;width:auto;" />
+            <img src="${AWELL_LOGO}" style="height:48px;width:auto;" />
             <div style="font-size:10px;color:#6B7A99;text-align:right;">Boringregenerering &middot; Tidsplan<br>${new Date().toLocaleDateString("da-DK")}</div>
           </div>
           <div style="height:1px;background:#2078C3;margin-bottom:10px;"></div>
@@ -1171,7 +1168,7 @@ function exportImg(b){
     hdr.style.cssText="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2078C3;";
     hdr.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <img src=""+AWELL_LOGO+"" style="height:48px;width:auto;" />
+        <img src="${AWELL_LOGO}" style="height:48px;width:auto;" />
         <div style="font-size:10px;color:#6B7A99;text-align:right;">Boringregenerering · Tidsplan<br>${new Date().toLocaleDateString("da-DK")}</div>
       </div>
       <div style="height:1px;background:#2078C3;margin-bottom:10px;"></div>
