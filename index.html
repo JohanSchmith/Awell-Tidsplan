@@ -41,8 +41,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .stam-grid{display:grid;grid-template-columns:180px 1fr 1fr;gap:12px;margin-bottom:0;}
 .stam-field{display:flex;flex-direction:column;gap:4px;}
 .stam-field.full{grid-column:1/-1;}
-.stam-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
-.stam-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--surface);transition:border-color .15s;outline:none;}
+.stam-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.stam-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:14px;color:var(--text);background:var(--surface);transition:border-color .15s;outline:none;}
 .stam-input:focus{border-color:var(--blue);}
 .stam-input.textarea{resize:vertical;min-height:56px;}
 
@@ -77,7 +77,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .week-cell{text-align:center;font-size:10px;font-weight:700;color:var(--blue-dark);padding:5px 4px;border-right:1px solid var(--border);overflow:hidden;white-space:nowrap;}
 .week-cell:last-child{border-right:none;}
 .gantt-date-row{display:flex;background:var(--bg);border-bottom:1px solid var(--border);}
-.date-cell{text-align:center;font-size:9px;color:var(--muted);padding:4px 2px;border-right:1px solid var(--border);font-weight:500;}
+.date-cell{text-align:center;font-size:11px;color:var(--muted);padding:5px 3px;border-right:1px solid var(--border);font-weight:500;}
 .date-cell:last-child{border-right:none;}
 .date-cell.weekend{color:#aaa;}
 .gantt-row{display:flex;border-bottom:1px solid var(--border);align-items:stretch;}
@@ -1074,7 +1074,7 @@ function renderOverview(content){
         clone.querySelectorAll(".ov-head").forEach(h=>h.style.display="none");
         clone.querySelectorAll(".resize-handle").forEach(rh=>rh.style.display="none");
         clone.querySelectorAll(".bar.hatched").forEach(b=>{
-          b.style.backgroundImage='url('+HATCH_PATTERN+')';
+          b.style.backgroundImage='url("'+HATCH_PATTERN+'")';
         });
         wrapper.appendChild(hdr);wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
