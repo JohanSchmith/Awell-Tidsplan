@@ -137,7 +137,7 @@ const DEFAULT_TASKS=[
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
 const DEFAULT_STAM={navn:"",beskrivelse:""};
-const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",filter:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null};
+const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",filter:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null,syretype:"special",filterstraek:"",lprm:"400",pumpe:"330",kgprm:"70"};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
 const DFTOKEN="579475e934e75fc3c88dc550884c9b4e";
 
@@ -655,6 +655,122 @@ function renderSingle(content){
   renderLinks();
   notesBody.appendChild(linksSep);
   notesCard.appendChild(notesBody);content.appendChild(notesCard);
+
+  // Syreberegner kort
+  const syreCard=el("div","card");
+  const syreHead=el("div","card-head");syreHead.style.cursor="pointer";
+  const syreLeft=el("div");syreLeft.style.cssText="display:flex;align-items:center;gap:10px;";
+  const syreChevron=el("span");syreChevron.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+  syreChevron.style.cssText="color:var(--muted);display:flex;transition:transform .2s;";
+  const syreTitle=el("div","card-title");syreTitle.textContent="Syreberegner";
+  syreLeft.appendChild(syreChevron);syreLeft.appendChild(syreTitle);
+  syreHead.appendChild(syreLeft);syreCard.appendChild(syreHead);
+
+  const syreBody=el("div","card-body");
+  const syreKey="syre-open-"+b;
+  const syreOpen=sessionStorage.getItem(syreKey)==="true";
+  syreBody.style.display=syreOpen?"block":"none";
+  syreChevron.style.transform=syreOpen?"rotate(0deg)":"rotate(-90deg)";
+  syreHead.onclick=()=>{
+    const isOpen=syreBody.style.display!=="none";
+    syreBody.style.display=isOpen?"none":"block";
+    syreChevron.style.transform=isOpen?"rotate(-90deg)":"rotate(0deg)";
+    sessionStorage.setItem(syreKey,(!isOpen)+"");
+  };
+
+  // Syretype valg
+  const syreTypeRow=el("div");syreTypeRow.style.cssText="display:flex;gap:8px;margin-bottom:16px;";
+  ["special","konventionel"].forEach(type=>{
+    const btn=el("button","btn"+(boringStam.syretype===type?" primary":""));
+    btn.textContent=type==="special"?"Specialsyring":"Konventionel syring";
+    btn.onclick=()=>{
+      boringStam.syretype=type;
+      document.querySelectorAll(".syre-type-btn").forEach(b=>b.className="btn syre-type-btn");
+      btn.className="btn primary syre-type-btn";
+      syreSpecial.style.display=type==="special"?"block":"none";
+      syreKonv.style.display=type==="konventionel"?"block":"none";
+      beregnSyre();
+    };
+    btn.classList.add("syre-type-btn");
+    syreTypeRow.appendChild(btn);
+  });
+  syreBody.appendChild(syreTypeRow);
+
+  // Beregningsfunktion
+  function beregnSyre(){
+    const fs=parseFloat(document.getElementById("syre-filterstraek-"+b)?.value)||0;
+    if(boringStam.syretype==="special"){
+      const lpm=parseFloat(document.getElementById("syre-lprm-"+b)?.value)||0;
+      const pumpe=parseFloat(document.getElementById("syre-pumpe-"+b)?.value)||0;
+      const totalL=fs*lpm;
+      const tid=pumpe>0?totalL/pumpe:0;
+      const res=document.getElementById("syre-result-"+b);
+      if(res)res.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:4px;">
+          <div><div class="stat-label">Total syremængde</div><div class="stat-value" style="font-size:20px;">${totalL.toLocaleString("da-DK")}<span class="stat-unit">liter</span></div></div>
+          <div><div class="stat-label">Pumpekapacitet</div><div class="stat-value" style="font-size:20px;">${pumpe.toLocaleString("da-DK")}<span class="stat-unit">l/t</span></div></div>
+          <div><div class="stat-label">Tilsætningstid</div><div class="stat-value" style="font-size:20px;">${tid.toLocaleString("da-DK",{maximumFractionDigits:1})}<span class="stat-unit">timer</span></div></div>
+        </div>`;
+    } else {
+      const kgpm=parseFloat(document.getElementById("syre-kgprm-"+b)?.value)||0;
+      const totalKg=fs*kgpm;
+      const res=document.getElementById("syre-result-"+b);
+      if(res)res.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+          <div><div class="stat-label">Filterstrækning</div><div class="stat-value" style="font-size:20px;">${fs.toLocaleString("da-DK")}<span class="stat-unit">m</span></div></div>
+          <div><div class="stat-label">Total saltsyre</div><div class="stat-value" style="font-size:20px;">${totalKg.toLocaleString("da-DK")}<span class="stat-unit">kg</span></div></div>
+        </div>`;
+    }
+  }
+
+  // Fælles filterstrækning felt
+  const fsGrid=el("div","stam-grid");fsGrid.style.marginBottom="12px";
+  const fsWrap=el("div","stam-field");
+  const fsLbl=el("label","stam-label");fsLbl.textContent="Filterstrækning (m)";
+  const fsInp=el("input","stam-input");fsInp.id="syre-filterstraek-"+b;
+  fsInp.type="number";fsInp.step="0.1";fsInp.placeholder="fx 10";
+  // Auto-beregn fra filterTop/filterBund hvis tilgængeligt
+  if(boringStam.filterTop&&boringStam.filterBund){
+    const fs=Math.abs(parseFloat(boringStam.filterBund)-parseFloat(boringStam.filterTop));
+    if(!isNaN(fs))fsInp.value=fs.toFixed(1);
+  } else {
+    fsInp.value=boringStam.filterstraek||"";
+  }
+  fsInp.oninput=()=>{boringStam.filterstraek=fsInp.value;beregnSyre();};
+  fsWrap.appendChild(fsLbl);fsWrap.appendChild(fsInp);fsGrid.appendChild(fsWrap);
+  syreBody.appendChild(fsGrid);
+
+  // Specialsyring felter
+  const syreSpecial=el("div");syreSpecial.style.display=boringStam.syretype==="special"?"block":"none";
+  const spGrid=el("div","stam-grid");spGrid.style.marginBottom="12px";
+  [{id:"syre-lprm-"+b,key:"lprm",label:"Liter pr. meter (l/m)",default:"400"},
+   {id:"syre-pumpe-"+b,key:"pumpe",label:"Pumpekapacitet (l/t)",default:"330"}].forEach(f=>{
+    const wrap=el("div","stam-field");
+    const lbl=el("label","stam-label");lbl.textContent=f.label;
+    const inp=el("input","stam-input");inp.id=f.id;inp.type="number";inp.step="any";
+    inp.value=boringStam[f.key]||f.default;
+    inp.oninput=()=>{boringStam[f.key]=inp.value;beregnSyre();};
+    wrap.appendChild(lbl);wrap.appendChild(inp);spGrid.appendChild(wrap);
+  });
+  syreSpecial.appendChild(spGrid);syreBody.appendChild(syreSpecial);
+
+  // Konventionel syring felter
+  const syreKonv=el("div");syreKonv.style.display=boringStam.syretype==="konventionel"?"block":"none";
+  const kvGrid=el("div","stam-grid");kvGrid.style.marginBottom="12px";
+  const kgWrap=el("div","stam-field");
+  const kgLbl=el("label","stam-label");kgLbl.textContent="Kg saltsyre pr. meter";
+  const kgInp=el("input","stam-input");kgInp.id="syre-kgprm-"+b;kgInp.type="number";kgInp.step="any";
+  kgInp.value=boringStam.kgprm||"70";
+  kgInp.oninput=()=>{boringStam.kgprm=kgInp.value;beregnSyre();};
+  kgWrap.appendChild(kgLbl);kgWrap.appendChild(kgInp);kvGrid.appendChild(kgWrap);
+  syreKonv.appendChild(kvGrid);syreBody.appendChild(syreKonv);
+
+  // Resultat
+  const syreResult=el("div");syreResult.id="syre-result-"+b;
+  syreResult.style.cssText="background:var(--blue-bg);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:12px 16px;";
+  syreBody.appendChild(syreResult);
+  syreCard.appendChild(syreBody);content.appendChild(syreCard);
+  setTimeout(beregnSyre,0);
 
   // Gantt card
   const card=el("div","card");
