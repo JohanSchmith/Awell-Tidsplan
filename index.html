@@ -574,9 +574,32 @@ function renderSingle(content){
     if(!dgu){jupStatus.textContent="Indtast DGU-nummer";return;}
     fetchBtn.disabled=true;fetchBtn.textContent="Henter...";jupStatus.style.color="var(--muted)";jupStatus.textContent="Kontakter Jupiter...";
     try{
-      const pr=await fetch(`/api/jupiter?dgu=${encodeURIComponent(dgu)}`);
-      const data=await pr.json();
-      if(!pr.ok||data.error)throw new Error(data.detail?data.error+": "+data.detail.substring(0,120):data.error||"HTTP "+pr.status);
+      // Kald GEUS SOAP direkte fra browseren
+      const soapBody=`<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:gro="http://groundwater.miljoeportal.geus.dk/">
+  <soapenv:Body><gro:getBoring><dguNr>${dgu}</dguNr></gro:getBoring></soapenv:Body>
+</soapenv:Envelope>`;
+      const pr=await fetch("https://webs.geus.dk/miljoeportal.groundwater.b-boring.2.0.0/B-Boring",{
+        method:"POST",
+        headers:{"Content-Type":"text/xml; charset=utf-8","SOAPAction":'"getBoring"'},
+        body:soapBody,
+        mode:"cors",
+      });
+      const xml=await pr.text();
+      if(!pr.ok)throw new Error("HTTP "+pr.status+": "+xml.substring(0,200));
+      // Parse XML
+      const get=(tag)=>{const m=xml.match(new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([^<]*)<`,"i"));return m?m[1].trim():null;};
+      const data={
+        adresse:[get("vejnavn"),get("husnr"),get("postnr"),get("postdistrikt")].filter(Boolean).join(" ")||null,
+        boredybde:get("borDybde")||get("boredybde")||null,
+        filterTop:get("filterTop")||null,
+        filterBund:get("filterBund")||get("filterNed")||null,
+        xkoord:get("xKoord")||get("xkoord")||null,
+        ykoord:get("yKoord")||get("ykoord")||null,
+        raw:xml,
+      };
+      if(data.xkoord&&data.ykoord){const x=parseFloat(data.xkoord),y=parseFloat(data.ykoord);if(x>100000){data.lat=56+(y-6200000)/111000;data.lng=9+(x-500000)/55000;}}
+      if(!pr.ok||data.error)throw new Error(data.error||"HTTP "+pr.status);
       boringStam.dgu=dgu;dguInp.value=dgu;
       if(data.adresse){boringStam.adresse=data.adresse;document.querySelectorAll(".jup-adresse").forEach(el=>el.value=data.adresse);}
       if(data.boredybde){boringStam.boredybde=data.boredybde;document.querySelectorAll(".jup-boredybde").forEach(el=>el.value=data.boredybde);}
