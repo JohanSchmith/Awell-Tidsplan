@@ -7,79 +7,70 @@ export default async function handler(req, res) {
   if (!dgu) { res.status(400).json({ error: 'Mangler dgu parameter' }); return; }
 
   const normalized = dgu.replace(/^DGU\s*/i, '').trim();
-  const token = process.env.DATAFORSYNINGEN_TOKEN || '579475e934e75fc3c88dc550884c9b4e';
 
-  const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json, */*' };
+  // SOAP request to GEUS B-Boring webservice
+  const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:gro="http://groundwater.miljoeportal.geus.dk/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <gro:getBoring>
+      <dguNr>${normalized}</dguNr>
+    </gro:getBoring>
+  </soapenv:Body>
+</soapenv:Envelope>`;
 
-  // New Dataforsyningen API structure (post maj 2025)
-  // https://api.dataforsyningen.dk/wfs/{servicenavn}?TOKEN=...
-  // Old structure: https://api.dataforsyningen.dk/{servicenavn}?token=...
-  const serviceNames = [
-    'Jupiter', 'jupiter', 'boringer', 'gt_boring', 'grundvand',
-    'geol_boringer', 'jupiter_boringer', 'boringarkiv',
-    'HyJupiter', 'hyjupiter', 'JupiterWWW'
-  ];
+  try {
+    const response = await fetch(
+      'https://webs.geus.dk/miljoeportal.groundwater.b-boring.2.0.0/B-Boring',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': '',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/xml, application/xml',
+        },
+        body: soapBody,
+      }
+    );
 
-  const results = [];
+    const text = await response.text();
+    
+    if (!response.ok) {
+      res.status(502).json({ error: `HTTP ${response.status}`, detail: text.substring(0, 500) });
+      return;
+    }
 
-  for (const svc of serviceNames) {
-    // Try both old and new URL structures
-    const urls = [
-      `https://api.dataforsyningen.dk/wfs/${svc}?service=WFS&version=2.0.0&request=GetCapabilities&TOKEN=${token}`,
-      `https://api.dataforsyningen.dk/${svc}?service=WFS&version=2.0.0&request=GetCapabilities&token=${token}`,
-    ];
-    for (const url of urls) {
-      try {
-        const r = await fetch(url, { headers });
-        if (r.status !== 404) {
-          const text = await r.text();
-          results.push({ svc, url: url.split('?')[0], status: r.status, ok: r.ok, preview: text.substring(0, 100) });
-          if (r.ok) break;
-        }
-      } catch(e) {
-        results.push({ svc, error: e.message });
+    // Parse XML response
+    // Extract key fields using regex (no XML parser needed for simple fields)
+    const get = (tag) => {
+      const m = text.match(new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([^<]*)<`, 'i'));
+      return m ? m[1].trim() : null;
+    };
+
+    const result = {
+      dgu: normalized,
+      adresse: [get('vejnavn'), get('husnr'), get('postnr'), get('postdistrikt')].filter(Boolean).join(' ') || get('adresse') || null,
+      boredybde: get('borDybde') || get('boredybde') || get('totalDepth') || null,
+      filterTop: get('filterTop') || get('filter_top') || null,
+      filterBund: get('filterBund') || get('filterNed') || get('filter_bund') || null,
+      xkoord: get('xKoord') || get('xkoord') || null,
+      ykoord: get('yKoord') || get('ykoord') || null,
+      raw: text.substring(0, 2000),
+    };
+
+    // Convert Danish UTM32 coordinates to WGS84 if available
+    if (result.xkoord && result.ykoord) {
+      const x = parseFloat(result.xkoord);
+      const y = parseFloat(result.ykoord);
+      if (x > 100000) {
+        result.lat = 56 + (y - 6200000) / 111000;
+        result.lng = 9 + (x - 500000) / 55000;
       }
     }
+
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
   }
-
-  const working = results.filter(r => r.ok);
-
-  if (working.length === 0) {
-    res.status(502).json({ error: 'Ingen services svarer 200', results: results.filter(r=>r.status && r.status !== 404) });
-    return;
-  }
-
-  // Query data from first working service
-  for (const svc of working) {
-    const isNew = svc.url.includes('/wfs/');
-    const tokenParam = isNew ? 'TOKEN' : 'token';
-    const basePath = svc.url;
-
-    const filters = [
-      `dgu_nr='${normalized}'`,
-      `dgunr='${normalized}'`,
-      `dgu_number='${normalized}'`,
-      `dguNumber='${normalized}'`,
-    ];
-
-    for (const filter of filters) {
-      try {
-        const dataUrl = `${basePath}?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(filter)}&${tokenParam}=${token}`;
-        const dr = await fetch(dataUrl, { headers });
-        const text = await dr.text();
-        if (dr.ok && text.includes('"features"')) {
-          const data = JSON.parse(text);
-          if (data.features?.length > 0) {
-            res.status(200).json({ source: svc.svc, normalized, geojson: data });
-            return;
-          }
-        }
-      } catch(e) {}
-    }
-  }
-
-  res.status(502).json({
-    error: 'Services fundet men ingen boringdata',
-    working: working.map(w => ({ svc: w.svc, url: w.url, status: w.status })),
-  });
 }

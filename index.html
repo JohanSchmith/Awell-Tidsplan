@@ -564,19 +564,51 @@ function renderSingle(content){
     window.open(url,"_blank");
   };
   dguRow.appendChild(jupLink);
+
+  // Hent-knap
+  const jupStatus=el("div");jupStatus.style.cssText="font-size:11px;margin-top:6px;min-height:14px;";
+  const fetchBtn=el("button","btn primary");
+  fetchBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent data';
+  fetchBtn.onclick=async()=>{
+    const dgu=dguInp.value.trim();
+    if(!dgu){jupStatus.textContent="Indtast DGU-nummer";return;}
+    fetchBtn.disabled=true;fetchBtn.textContent="Henter...";jupStatus.style.color="var(--muted)";jupStatus.textContent="Kontakter Jupiter...";
+    try{
+      const pr=await fetch(`/api/jupiter?dgu=${encodeURIComponent(dgu)}`);
+      const data=await pr.json();
+      if(!pr.ok||data.error)throw new Error(data.detail?data.error+": "+data.detail.substring(0,120):data.error||"HTTP "+pr.status);
+      boringStam.dgu=dgu;dguInp.value=dgu;
+      if(data.adresse){boringStam.adresse=data.adresse;document.querySelectorAll(".jup-adresse").forEach(el=>el.value=data.adresse);}
+      if(data.boredybde){boringStam.boredybde=data.boredybde;document.querySelectorAll(".jup-boredybde").forEach(el=>el.value=data.boredybde);}
+      if(data.filterTop){boringStam.filterTop=data.filterTop;document.querySelectorAll(".jup-filterTop").forEach(el=>el.value=data.filterTop);}
+      if(data.filterBund){boringStam.filterBund=data.filterBund;document.querySelectorAll(".jup-filterBund").forEach(el=>el.value=data.filterBund);}
+      if(data.lat&&data.lng){
+        boringStam.koordinat={lat:data.lat,lng:data.lng};
+        document.querySelectorAll(".jup-lat").forEach(el=>el.value=data.lat);
+        document.querySelectorAll(".jup-lng").forEach(el=>el.value=data.lng);
+      }
+      jupStatus.style.color="#1D9E75";jupStatus.textContent="✓ Data hentet fra Jupiter";
+    }catch(e){jupStatus.style.color="#c0392b";jupStatus.textContent="Fejl: "+e.message;}
+    fetchBtn.disabled=false;
+    fetchBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent data';
+  };
+  dguRow.appendChild(fetchBtn);
+  jupiterSep.appendChild(dguRow);
+  jupiterSep.appendChild(jupStatus);
   jupiterSep.appendChild(dguRow);
 
   // Manuel boringdata felt
   const manualGrid=el("div","stam-grid");manualGrid.style.marginTop="10px";
   [
-    {key:"adresse",label:"Adresse"},
-    {key:"boredybde",label:"Boredybde (m)"},
-    {key:"filterTop",label:"Filter top (m)"},
-    {key:"filterBund",label:"Filter bund (m)"},
+    {key:"adresse",label:"Adresse",cls:"jup-adresse"},
+    {key:"boredybde",label:"Boredybde (m)",cls:"jup-boredybde"},
+    {key:"filterTop",label:"Filter top (m)",cls:"jup-filterTop"},
+    {key:"filterBund",label:"Filter bund (m)",cls:"jup-filterBund"},
   ].forEach(f=>{
     const wrap=el("div","stam-field");
     const lbl=el("label","stam-label");lbl.textContent=f.label;
     const inp=el("input","stam-input");inp.style.cssText="padding:6px 8px;font-size:12px;";
+    if(f.cls)inp.classList.add(f.cls);
     inp.placeholder=f.label;inp.value=boringStam[f.key]||"";
     inp.oninput=()=>{boringStam[f.key]=inp.value;};
     wrap.appendChild(lbl);wrap.appendChild(inp);manualGrid.appendChild(wrap);
@@ -589,6 +621,7 @@ function renderSingle(content){
   const latLbl=el("label","stam-label");latLbl.textContent="Breddegrad (lat)";
   const latInp=el("input","stam-input");latInp.style.cssText="padding:6px 8px;font-size:12px;";
   latInp.placeholder="fx 55.6761";latInp.type="number";latInp.step="any";
+  latInp.classList.add("jup-lat");
   latInp.value=boringStam.koordinat?.lat||"";
   latInp.oninput=()=>{if(!boringStam.koordinat)boringStam.koordinat={};boringStam.koordinat.lat=parseFloat(latInp.value);};
   latWrap.appendChild(latLbl);latWrap.appendChild(latInp);
@@ -597,6 +630,7 @@ function renderSingle(content){
   const lngLbl=el("label","stam-label");lngLbl.textContent="Længdegrad (lng)";
   const lngInp=el("input","stam-input");lngInp.style.cssText="padding:6px 8px;font-size:12px;";
   lngInp.placeholder="fx 12.5683";lngInp.type="number";lngInp.step="any";
+  lngInp.classList.add("jup-lng");
   lngInp.value=boringStam.koordinat?.lng||"";
   lngInp.oninput=()=>{if(!boringStam.koordinat)boringStam.koordinat={};boringStam.koordinat.lng=parseFloat(lngInp.value);};
   lngWrap.appendChild(lngLbl);lngWrap.appendChild(lngInp);
@@ -1030,51 +1064,15 @@ async function lookupJupiter(dguNumber, boringStam, onDone){
     if(!pr.ok)throw new Error("Jupiter svarede HTTP "+pr.status+" — prøv at åbne "+jupUrl+" direkte i browseren");
     const data=await pr.json();
     if(data.error)throw new Error(data.error);
-    // Parse svar — understøtter både Jupiter JSON og Dataforsyningen GeoJSON
-    let b=null;
-    if(data.geojson){
-      // GeoJSON fra Dataforsyningen WFS
-      const feat=data.geojson.features[0];
-      if(!feat)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
-      const p=feat.properties||{};
-      const geom=feat.geometry;
-      boringStam.dgu=dguNumber;
-      boringStam.adresse=[p.vejnavn,p.husnr,p.postnr,p.by].filter(Boolean).join(" ")||p.adresse||"";
-      if(geom&&geom.coordinates){
-        // GeoJSON er typisk i EPSG:25832 (UTM32) — konverter til WGS84 approximativt
-        const [x,y]=geom.coordinates;
-        if(x>100000){
-          // UTM32 -> WGS84 approx
-          const lng=9+(x-500000)/55000;
-          const lat=56+(y-6200000)/111000;
-          boringStam.koordinat={lat,lng};
-        } else {
-          boringStam.koordinat={lat:geom.coordinates[1],lng:geom.coordinates[0]};
-        }
-      }
-      boringStam.boredybde=p.dybde!=null?p.dybde+"":p.total_depth!=null?p.total_depth+"":"";
-      boringStam.filterTop=p.filter_top!=null?p.filter_top+"":"";
-      boringStam.filterBund=p.filter_bund!=null?p.filter_bund+"":p.filter_bottom!=null?p.filter_bottom+"":"";
-      boringStam.jupiterData=p;
-      b=p;
-    } else {
-      // Direkte Jupiter JSON
-      b=Array.isArray(data)?data[0]:data;
-      if(!b)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
-      boringStam.dgu=dguNumber;
-      boringStam.adresse=(b.location?.streetName||"")+" "+(b.location?.houseNumber||"")+(b.location?.city?", "+b.location.city:"");
-      if(b.location?.latitude&&b.location?.longitude){
-        boringStam.koordinat={lat:b.location.latitude,lng:b.location.longitude};
-      }
-      boringStam.boredybde=b.totalDepth!=null?b.totalDepth+"":"";
-      if(b.screens&&b.screens.length){
-        const s=b.screens[0];
-        boringStam.filterTop=s.top!=null?s.top+"":"";
-        boringStam.filterBund=s.bottom!=null?s.bottom+"":"";
-      }
-      boringStam.jupiterData=b;
-    }
-    onDone(null,b);
+    // Parse SOAP-proxy svar
+    boringStam.dgu=dguNumber;
+    if(data.adresse)boringStam.adresse=data.adresse;
+    if(data.boredybde)boringStam.boredybde=data.boredybde;
+    if(data.filterTop)boringStam.filterTop=data.filterTop;
+    if(data.filterBund)boringStam.filterBund=data.filterBund;
+    if(data.lat&&data.lng)boringStam.koordinat={lat:data.lat,lng:data.lng};
+    boringStam.jupiterData=data;
+    onDone(null,data);
   }catch(e){onDone(e);}
 }
 
