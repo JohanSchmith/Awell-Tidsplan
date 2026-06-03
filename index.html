@@ -949,15 +949,14 @@ function buildGantt(b,tasks,interactive){
           render();
         }
       });
-      // Color dot
-      const colorDot=el("div","color-dot");colorDot.style.background=task.color;colorDot.title="Vælg farve";
-      const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
-      colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
-      colorDot.onclick=()=>colorInput.click();
       rlw.appendChild(drag);
     }
     const del=el("button","row-del");del.innerHTML="×";del.title="Fjern aktivitet";
     del.onclick=()=>{state.boringer[b]=state.boringer[b].filter(t=>t.id!==task.id);render();};
+    const colorDot=el("div","color-dot");colorDot.style.background=task.color;colorDot.title="Vælg farve";
+    const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
+    colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
+    colorDot.onclick=()=>colorInput.click();
     rlw.appendChild(num);rlw.appendChild(inp);
     if(interactive){rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
     row.appendChild(rlw);
