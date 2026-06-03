@@ -930,8 +930,8 @@ function buildGantt(b,tasks,interactive){
       lh.addEventListener("mousedown",e=>startDrag(e,b,task,"left",bar,track));
       rh.addEventListener("mousedown",e=>startDrag(e,b,task,"right",bar,track));
       bar.addEventListener("mousedown",e=>{if(e.target===lh||e.target===rh)return;startDrag(e,b,task,"move",bar,track);});
-      requestAnimationFrame(()=>{if(bar.offsetWidth<60)lb.style.display="none";});
-      new ResizeObserver(()=>{lb.style.display=bar.offsetWidth<60?"none":"block";}).observe(bar);
+      requestAnimationFrame(()=>{lb.style.display=bar.offsetWidth<80?"none":"block";});
+      new ResizeObserver(()=>{lb.style.display=bar.offsetWidth<80?"none":"block";}).observe(bar);
     } else {
       const lb=el("div","bar-label");lb.style.padding="0 6px";lb.textContent=task.label;bar.appendChild(lb);
       requestAnimationFrame(()=>{if(bar.offsetWidth<50)lb.style.display="none";});
