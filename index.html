@@ -817,6 +817,9 @@ function renderSingle(content){
   const bImg=el("button","btn");
   bImg.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Billede';
   bImg.onclick=()=>exportImg(b);
+  const bPdf=el("button","btn");
+  bPdf.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>PDF';
+  bPdf.onclick=()=>exportPdf(b);
   const bXls=el("button","btn primary");
   bXls.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Excel';
   bXls.onclick=()=>exportXls(b);
@@ -1003,7 +1006,30 @@ function renderOverview(content){
   bAll.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Eksporter alle';
   bAll.onclick=exportAll;
   const btnRow=el("div");btnRow.style.cssText="display:flex;gap:8px;";
-  btnRow.appendChild(bImg);btnRow.appendChild(bAll);
+  const bPdfAll=el("button","btn");
+  bPdfAll.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>PDF';
+  bPdfAll.onclick=()=>{
+    const grid=document.getElementById("overview-gantt-grid");
+    if(!grid){alert("Kunne ikke finde overblik");return;}
+    const loadLibs=(cb)=>{
+      const loadH2C=()=>{if(window.html2canvas){loadJsPDF();}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";s.onload=loadJsPDF;document.head.appendChild(s);}};
+      const loadJsPDF=()=>{if(window.jspdf){cb();}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=cb;document.head.appendChild(s);}};
+      loadH2C();
+    };
+    loadLibs(()=>{
+      window.html2canvas(grid,{scale:2,backgroundColor:"#F4F6F9",useCORS:true}).then(canvas=>{
+        const imgData=canvas.toDataURL("image/png");
+        const {jsPDF}=window.jspdf;
+        const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+        const pdfW=pdf.internal.pageSize.getWidth();const pdfH=pdf.internal.pageSize.getHeight();
+        const ratio=Math.min(pdfW/canvas.width*2.834,pdfH/canvas.height*2.834);
+        const w=canvas.width*ratio/2.834;const h=canvas.height*ratio/2.834;
+        pdf.addImage(imgData,"PNG",(pdfW-w)/2,(pdfH-h)/2,w,h);
+        pdf.save("Awell-tidsplan-overblik.pdf");
+      });
+    });
+  };
+  btnRow.appendChild(bImg);btnRow.appendChild(bPdfAll);btnRow.appendChild(bAll);
   ch.appendChild(ct);ch.appendChild(btnRow);card.appendChild(ch);
   const cb=el("div","card-body");
   const grid=el("div","overview-grid");grid.id="overview-gantt-grid";
@@ -1021,6 +1047,54 @@ function renderOverview(content){
     grid.appendChild(wrap);
   });
   cb.appendChild(grid);card.appendChild(cb);content.appendChild(card);
+}
+
+function exportPdf(b){
+  const stam=state.stam;
+  const boringStam=state.boringStam[b];
+  const sd=getStartDate(b);
+  const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
+  const loadLibs=(cb)=>{
+    const loadH2C=()=>{
+      if(window.html2canvas){loadJsPDF();}
+      else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";s.onload=loadJsPDF;document.head.appendChild(s);}
+    };
+    const loadJsPDF=()=>{
+      if(window.jspdf){cb();}
+      else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=cb;document.head.appendChild(s);}
+    };
+    loadH2C();
+  };
+  loadLibs(()=>{
+    const g=document.getElementById("gantt-"+b);if(!g)return;
+    const wrapper=document.createElement("div");
+    wrapper.style.cssText="background:#fff;padding:20px;font-family:Inter,sans-serif;display:inline-block;min-width:100%;";
+    const hdr=document.createElement("div");
+    hdr.style.cssText="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2078C3;";
+    hdr.innerHTML=`<div style="font-size:18px;font-weight:700;color:#1A2233;margin-bottom:4px;">${stam.navn||"Awell Brøndboring"}</div>
+      <div style="display:flex;gap:24px;font-size:12px;color:#6B7A99;margin-top:6px;">
+        <span><b style="color:#1A2233">Boring:</b> ${boringStam.boring||b}</span>
+        <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
+        <span><b style="color:#1A2233">Total dage:</b> ${maxDay(b)}</span>
+        ${stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${stam.beskrivelse}</span>`:""}
+      </div>`;
+    const ganttClone=g.cloneNode(true);
+    wrapper.appendChild(hdr);wrapper.appendChild(ganttClone);
+    document.body.appendChild(wrapper);
+    window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(canvas=>{
+      document.body.removeChild(wrapper);
+      const imgData=canvas.toDataURL("image/png");
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const pdfW=pdf.internal.pageSize.getWidth();
+      const pdfH=pdf.internal.pageSize.getHeight();
+      const imgW=canvas.width;const imgH=canvas.height;
+      const ratio=Math.min(pdfW/imgW*2.834,pdfH/imgH*2.834);
+      const w=imgW*ratio/2.834;const h=imgH*ratio/2.834;
+      pdf.addImage(imgData,"PNG",(pdfW-w)/2,(pdfH-h)/2,w,h);
+      pdf.save("Awell-tidsplan-"+(boringStam.boring||b)+".pdf");
+    });
+  });
 }
 
 function exportImg(b){
