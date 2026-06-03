@@ -7,39 +7,79 @@ export default async function handler(req, res) {
   if (!dgu) { res.status(400).json({ error: 'Mangler dgu parameter' }); return; }
 
   const normalized = dgu.replace(/^DGU\s*/i, '').trim();
-  const token = process.env.DATAFORSYNINGEN_TOKEN || '3636bf932b8d1f9bd18659524549afc9';
+  const token = process.env.DATAFORSYNINGEN_TOKEN || '579475e934e75fc3c88dc550884c9b4e';
 
-  // Try Dataforsyningen WFS endpoints for Jupiter boring data
-  const services = [
-    `https://api.dataforsyningen.dk/boringarkiv_wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=boringarkiv:borehole&CQL_FILTER=dgu_number='${normalized}'&outputFormat=application/json&token=${token}`,
-    `https://api.dataforsyningen.dk/Jupiter_boringer?service=WFS&version=2.0.0&request=GetFeature&typeNames=Jupiter_boringer:borehole&CQL_FILTER=dgu_nr='${normalized}'&outputFormat=application/json&token=${token}`,
-    `https://api.dataforsyningen.dk/boringer_wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=boringer:boring&CQL_FILTER=dgunr='${normalized}'&outputFormat=application/json&token=${token}`,
+  const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json, */*' };
+
+  // New Dataforsyningen API structure (post maj 2025)
+  // https://api.dataforsyningen.dk/wfs/{servicenavn}?TOKEN=...
+  // Old structure: https://api.dataforsyningen.dk/{servicenavn}?token=...
+  const serviceNames = [
+    'Jupiter', 'jupiter', 'boringer', 'gt_boring', 'grundvand',
+    'geol_boringer', 'jupiter_boringer', 'boringarkiv',
+    'HyJupiter', 'hyjupiter', 'JupiterWWW'
   ];
 
-  const headers = {
-    'Accept': 'application/json, */*',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-  };
-
   const results = [];
-  for (const url of services) {
-    try {
-      const response = await fetch(url, { headers });
-      const text = await response.text();
-      const shortUrl = url.split('?')[0].split('/').pop();
-      results.push({ service: shortUrl, status: response.status, body: text.substring(0, 400) });
-      
-      if (response.ok && text.includes('"features"')) {
-        const data = JSON.parse(text);
-        if (data.features && data.features.length > 0) {
-          res.status(200).json({ source: 'dataforsyningen', normalized, geojson: data });
-          return;
+
+  for (const svc of serviceNames) {
+    // Try both old and new URL structures
+    const urls = [
+      `https://api.dataforsyningen.dk/wfs/${svc}?service=WFS&version=2.0.0&request=GetCapabilities&TOKEN=${token}`,
+      `https://api.dataforsyningen.dk/${svc}?service=WFS&version=2.0.0&request=GetCapabilities&token=${token}`,
+    ];
+    for (const url of urls) {
+      try {
+        const r = await fetch(url, { headers });
+        if (r.status !== 404) {
+          const text = await r.text();
+          results.push({ svc, url: url.split('?')[0], status: r.status, ok: r.ok, preview: text.substring(0, 100) });
+          if (r.ok) break;
         }
+      } catch(e) {
+        results.push({ svc, error: e.message });
       }
-    } catch (err) {
-      results.push({ error: err.message });
     }
   }
 
-  res.status(502).json({ error: 'Ingen data fundet', normalized, results });
+  const working = results.filter(r => r.ok);
+
+  if (working.length === 0) {
+    res.status(502).json({ error: 'Ingen services svarer 200', results: results.filter(r=>r.status && r.status !== 404) });
+    return;
+  }
+
+  // Query data from first working service
+  for (const svc of working) {
+    const isNew = svc.url.includes('/wfs/');
+    const tokenParam = isNew ? 'TOKEN' : 'token';
+    const basePath = svc.url;
+
+    const filters = [
+      `dgu_nr='${normalized}'`,
+      `dgunr='${normalized}'`,
+      `dgu_number='${normalized}'`,
+      `dguNumber='${normalized}'`,
+    ];
+
+    for (const filter of filters) {
+      try {
+        const dataUrl = `${basePath}?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&CQL_FILTER=${encodeURIComponent(filter)}&${tokenParam}=${token}`;
+        const dr = await fetch(dataUrl, { headers });
+        const text = await dr.text();
+        if (dr.ok && text.includes('"features"')) {
+          const data = JSON.parse(text);
+          if (data.features?.length > 0) {
+            res.status(200).json({ source: svc.svc, normalized, geojson: data });
+            return;
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
+  res.status(502).json({
+    error: 'Services fundet men ingen boringdata',
+    working: working.map(w => ({ svc: w.svc, url: w.url, status: w.status })),
+  });
 }
