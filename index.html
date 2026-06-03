@@ -1501,12 +1501,14 @@ function renderProject(content){
     const startCol=(sd-minDate)/86400000/7;
     const widthCols=days/7;
     const bc=el("div");bc.style.cssText="position:absolute;inset:0;pointer-events:none;";
+    // bar gets its own pointer-events restored below
     const bar=el("div");
     bar.style.cssText=`position:absolute;top:6px;height:28px;border-radius:6px;left:${(startCol/cols*100).toFixed(3)}%;width:${(widthCols/cols*100).toFixed(3)}%;background:${color};color:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.2);white-space:nowrap;overflow:hidden;`;
     const startStr2=sd.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
     const endStr2=ed.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
     bar.title=label+" | "+startStr2+" – "+endStr2+" ("+days+" dage)";
     bar.style.cursor="pointer";
+    bar.style.pointerEvents="auto";
     bar.onclick=()=>{state.tab="single";state.active=b;render();};
     bar.textContent=label;
     bc.appendChild(bar);track.appendChild(bc);
