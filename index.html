@@ -1039,14 +1039,35 @@ function renderOverview(content){
         // Build wrapper with header matching single boring export
         const wrapper=document.createElement("div");
         wrapper.style.cssText="background:#fff;padding:20px;font-family:Inter,sans-serif;display:inline-block;min-width:100%;";
+// PDF header with Awell logo and blue design bar
         const hdr=document.createElement("div");
-        hdr.style.cssText="margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2078C3;";
-        hdr.innerHTML=`<div style="font-size:16px;font-weight:700;color:#1A2233;margin-bottom:4px;">${state.stam.navn||"Awell Brøndboring"}</div>
-          <div style="display:flex;gap:20px;font-size:11px;color:#6B7A99;flex-wrap:wrap;">
-            <span><b style="color:#1A2233">Boring:</b> ${bs.boring||boringId}</span>
-            <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
-            <span><b style="color:#1A2233">Total dage:</b> ${maxDay(boringId)}</span>
-            ${state.stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${state.stam.beskrivelse}</span>`:""}
+        hdr.style.cssText="margin-bottom:16px;font-family:Inter,sans-serif;";
+        hdr.innerHTML=`
+          <!-- Top blue bar with logo -->
+          <div style="background:#2078C3;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin:-20px -20px 16px -20px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <svg width="36" height="34" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="13" y="0" width="6" height="28" rx="2" fill="white"/>
+                <rect x="0" y="8" width="6" height="20" rx="2" fill="rgba(255,255,255,0.65)"/>
+                <rect x="26" y="5" width="6" height="23" rx="2" fill="rgba(255,255,255,0.65)"/>
+              </svg>
+              <div>
+                <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.3px;line-height:1;">Awell</div>
+                <div style="color:rgba(255,255,255,0.75);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Brøndboring</div>
+              </div>
+            </div>
+            <div style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:500;">Boringregenerering · Tidsplan</div>
+          </div>
+          <!-- Project info -->
+          <div style="padding:0 4px;border-left:4px solid #2078C3;margin-bottom:12px;">
+            <div style="font-size:16px;font-weight:700;color:#1A2233;margin-bottom:5px;">${state.stam.navn||"Awell Brøndboring"}</div>
+            <div style="display:flex;gap:20px;font-size:11px;color:#6B7A99;flex-wrap:wrap;">
+              <span><b style="color:#1A2233;">Boring:</b> ${bs.boring||boringId}</span>
+              <span><b style="color:#1A2233;">Startdato:</b> ${startStr}</span>
+              <span><b style="color:#1A2233;">Total dage:</b> ${maxDay(boringId)}</span>
+              ${state.stam.projektnr?`<span><b style="color:#1A2233;">Projektnr:</b> ${state.stam.projektnr}</span>`:""}
+              ${state.stam.beskrivelse?`<span style="color:#6B7A99;font-style:italic;">${state.stam.beskrivelse}</span>`:""}
+            </div>
           </div>`;
         const clone=el.cloneNode(true);
         clone.querySelectorAll(".bar-label").forEach(lb=>lb.style.display="none");
@@ -1150,12 +1171,29 @@ function exportImg(b){
     const hdr=document.createElement("div");
     hdr.style.cssText="margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #2078C3;";
     hdr.innerHTML=`
-      <div style="font-size:18px;font-weight:700;color:#1A2233;margin-bottom:4px;">${stam.navn||"Awell Brøndboring"}</div>
-      <div style="display:flex;gap:24px;font-size:12px;color:#6B7A99;margin-top:6px;">
-        <span><b style="color:#1A2233">Boring:</b> ${boringStam.boring||b}</span>
-        <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
-        <span><b style="color:#1A2233">Total dage:</b> ${maxDay(b)}</span>
-        ${stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${stam.beskrivelse}</span>`:""}
+      <div style="background:#2078C3;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin:-20px -20px 16px -20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="36" height="34" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="13" y="0" width="6" height="28" rx="2" fill="white"/>
+            <rect x="0" y="8" width="6" height="20" rx="2" fill="rgba(255,255,255,0.65)"/>
+            <rect x="26" y="5" width="6" height="23" rx="2" fill="rgba(255,255,255,0.65)"/>
+          </svg>
+          <div>
+            <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.3px;line-height:1;">Awell</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Brøndboring</div>
+          </div>
+        </div>
+        <div style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:500;">Boringregenerering · Tidsplan</div>
+      </div>
+      <div style="padding:0 4px;border-left:4px solid #2078C3;margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:700;color:#1A2233;margin-bottom:5px;">${stam.navn||"Awell Brøndboring"}</div>
+        <div style="display:flex;gap:20px;font-size:11px;color:#6B7A99;flex-wrap:wrap;">
+          <span><b style="color:#1A2233;">Boring:</b> ${boringStam.boring||b}</span>
+          <span><b style="color:#1A2233;">Startdato:</b> ${startStr}</span>
+          <span><b style="color:#1A2233;">Total dage:</b> ${maxDay(b)}</span>
+          ${stam.projektnr?`<span><b style="color:#1A2233;">Projektnr:</b> ${stam.projektnr}</span>`:""}
+          ${stam.beskrivelse?`<span style="color:#6B7A99;font-style:italic;">${stam.beskrivelse}</span>`:""}
+        </div>
       </div>`;
     const ganttClone=g.cloneNode(true);
     wrapper.appendChild(hdr);wrapper.appendChild(ganttClone);
