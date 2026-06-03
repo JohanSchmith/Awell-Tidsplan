@@ -137,8 +137,9 @@ const DEFAULT_TASKS=[
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
 const DEFAULT_STAM={navn:"",beskrivelse:""};
-const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",andeninfo:"",links:[]};
+const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",andeninfo:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
+const DFTOKEN="3636bf932b8d1f9bd18659524549afc9";
 
 function dc(o){return JSON.parse(JSON.stringify(o));}
 let state={tab:"single",active:"B1",boringer:{},stam:dc(DEFAULT_STAM),boringStam:{},currentProjectId:null};
@@ -182,7 +183,7 @@ function exportProjectFile(){
   // Strip internal notes + links from export
   const cleanBoringStam={};
   Object.keys(state.boringStam).forEach(b=>{
-    const {notat,hustype,adgang,materiel,andeninfo,links,...rest}=state.boringStam[b];
+    const {notat,hustype,adgang,materiel,andeninfo,links,jupiterData,...rest}=state.boringStam[b];
     cleanBoringStam[b]=rest;
   });
   const data={version:1,boringerList:BORINGER,...state,boringStam:cleanBoringStam};
@@ -317,7 +318,7 @@ function renderProjectList(){
         // Strip notat before export
         try{
           const pd=JSON.parse(p.data);
-          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>{delete bs.notat;delete bs.hustype;delete bs.adgang;delete bs.materiel;delete bs.andeninfo;delete bs.links;});
+          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>{delete bs.notat;delete bs.hustype;delete bs.adgang;delete bs.materiel;delete bs.andeninfo;delete bs.links;delete bs.jupiterData;});
           const blob2=new Blob([JSON.stringify(pd)],{type:"application/json"});
           const a=document.createElement("a");
           a.href=URL.createObjectURL(blob2);
@@ -534,6 +535,65 @@ function renderSingle(content){
     grid.appendChild(wrap);
   });
 
+  // Jupiter opslag sektion
+  const jupiterSep=el("div");jupiterSep.style.cssText="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);";
+  const jupiterTitle=el("div","stam-label");jupiterTitle.style.marginBottom="8px";
+  jupiterTitle.innerHTML='Jupiter / GEUS opslag';
+  jupiterSep.appendChild(jupiterTitle);
+
+  const jupiterRow=el("div");jupiterRow.style.cssText="display:flex;gap:8px;align-items:center;margin-bottom:10px;";
+  const dguInp=el("input","stam-input");dguInp.style.cssText="flex:1;padding:6px 10px;font-size:12px;";
+  dguInp.placeholder="DGU-nummer fx 199.1081";dguInp.type="text";dguInp.value=boringStam.dgu||"";
+  const lookupBtn=el("button","btn primary");
+  lookupBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent fra Jupiter';
+  const jupiterStatus=el("div");jupiterStatus.style.cssText="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px;";
+
+  const jupiterFields=el("div");jupiterFields.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;";
+  
+  function renderJupiterFields(){
+    jupiterFields.innerHTML="";
+    if(!boringStam.koordinat&&!boringStam.adresse)return;
+    [
+      {l:"Adresse",v:boringStam.adresse},
+      {l:"Boredybde (m)",v:boringStam.boredybde},
+      {l:"Filter top (m)",v:boringStam.filterTop},
+      {l:"Filter bund (m)",v:boringStam.filterBund},
+    ].forEach(f=>{
+      if(!f.v)return;
+      const fw=el("div");fw.style.cssText="display:flex;flex-direction:column;gap:2px;";
+      const fl=el("div","stam-label");fl.textContent=f.l;
+      const fv=el("div");fv.style.cssText="font-size:12px;font-weight:500;color:var(--text);padding:5px 0;";fv.textContent=f.v;
+      fw.appendChild(fl);fw.appendChild(fv);jupiterFields.appendChild(fw);
+    });
+    // Map
+    if(boringStam.koordinat){
+      const mapWrap=el("div");mapWrap.style.cssText="grid-column:1/-1;margin-top:6px;";
+      const mapLbl=el("div","stam-label");mapLbl.style.marginBottom="6px";mapLbl.textContent="Kortafsnit";
+      const mapFrame=el("iframe");
+      mapFrame.style.cssText="width:100%;height:280px;border:1px solid var(--border);border-radius:6px;";
+      mapFrame.srcdoc=buildMapHTML(boringStam.koordinat.lat,boringStam.koordinat.lng,boringStam.dgu||"Boring");
+      mapWrap.appendChild(mapLbl);mapWrap.appendChild(mapFrame);
+      jupiterFields.appendChild(mapWrap);
+    }
+  }
+  renderJupiterFields();
+
+  lookupBtn.onclick=async()=>{
+    const dgu=dguInp.value.trim();
+    if(!dgu){jupiterStatus.textContent="Indtast DGU-nummer";return;}
+    lookupBtn.disabled=true;lookupBtn.textContent="Henter...";jupiterStatus.textContent="";
+    lookupJupiter(dgu,boringStam,(err,data)=>{
+      lookupBtn.disabled=false;
+      lookupBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Hent fra Jupiter';
+      if(err){jupiterStatus.style.color="#c0392b";jupiterStatus.textContent="Fejl: "+err.message;return;}
+      jupiterStatus.style.color="#1D9E75";jupiterStatus.textContent="✓ Data hentet fra Jupiter";
+      renderJupiterFields();
+    });
+  };
+
+  jupiterRow.appendChild(dguInp);jupiterRow.appendChild(lookupBtn);
+  jupiterSep.appendChild(jupiterRow);jupiterSep.appendChild(jupiterStatus);jupiterSep.appendChild(jupiterFields);
+  stamBody.appendChild(jupiterSep);
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
 
   // Interne noter kort
@@ -928,6 +988,49 @@ function nextWorkday(date){
   return d;
 }
 
+
+async function lookupJupiter(dguNumber, boringStam, onDone){
+  try{
+    const url=`https://data.geus.dk/JupiterWWW/api/v1/borehole?dguNumber=${encodeURIComponent(dguNumber)}&fmt=json`;
+    const r=await fetch(url);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const data=await r.json();
+    const b=Array.isArray(data)?data[0]:data;
+    if(!b)throw new Error("Ingen boring fundet");
+    boringStam.dgu=dguNumber;
+    boringStam.adresse=(b.location?.streetName||"")+" "+(b.location?.houseNumber||"")+(b.location?.city?", "+b.location.city:"");
+    if(b.location?.latitude&&b.location?.longitude){
+      boringStam.koordinat={lat:b.location.latitude,lng:b.location.longitude};
+    }
+    boringStam.boredybde=b.totalDepth!=null?b.totalDepth+"":"";
+    // Filter data from screens
+    if(b.screens&&b.screens.length){
+      const s=b.screens[0];
+      boringStam.filterTop=s.top!=null?s.top+"":"";
+      boringStam.filterBund=s.bottom!=null?s.bottom+"":"";
+    }
+    boringStam.jupiterData=b;
+    onDone(null,b);
+  }catch(e){onDone(e);}
+}
+
+function buildMapHTML(lat,lng,label){
+  const dfBase=`https://api.dataforsyningen.dk/orto_foraar_wmts?service=WMTS&request=GetTile&version=1.0.0&layer=orto_foraar&style=default&format=image/jpeg&TileMatrixSet=KortforsyningTilingDK&token=${DFTOKEN}`;
+  // Use Leaflet with Dataforsyningen skærmkort
+  return `<!DOCTYPE html><html><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\/script>
+  <style>body{margin:0}#map{width:100%;height:100%;}</style></head>
+  <body><div id="map"></div><script>
+  var map=L.map("map",{zoomControl:true}).setView([${lat},${lng}],15);
+  L.tileLayer("https://api.dataforsyningen.dk/topo_skaermkort_wmts?service=WMTS&request=GetTile&version=1.0.0&layer=topo_skaermkort&style=default&format=image/png&TileMatrixSet=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}&token=${DFTOKEN}",{
+    attribution:"&copy; Styrelsen for Dataforsyning og Infrastruktur",maxZoom:20
+  }).addTo(map);
+  var icon=L.divIcon({html:'<div style="background:#2078C3;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+  L.marker([${lat},${lng}],{icon:icon}).addTo(map).bindPopup("${label.replace(/"/g,"'")}").openPopup();
+  <\/script></body></html>`;
+}
 
 // Migrer fra gammel nøgle hvis den findes
 (function(){
