@@ -38,7 +38,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .card-body{padding:16px;}
 
 /* Stamoplysninger */
-.stam-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0;}
+.stam-grid{display:grid;grid-template-columns:140px 1fr 1fr;gap:12px;margin-bottom:0;}
 .stam-field{display:flex;flex-direction:column;gap:4px;}
 .stam-field.full{grid-column:1/-1;}
 .stam-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
@@ -491,10 +491,11 @@ function renderSingle(content){
   // Shared project fields
   [
     {key:"projektnr",label:"Projektnummer",obj:state.stam,shared:true},
-    {key:"navn",label:"Projektnavn / Vandværk",obj:state.stam,shared:true},
+    {key:"navn",label:"Projektnavn / Vandværk",obj:state.stam,shared:true,span2:true},
     {key:"beskrivelse",label:"Beskrivelse / noter",obj:state.stam,shared:true,textarea:true,full:true},
   ].forEach(f=>{
     const wrap=el("div","stam-field"+(f.full?" full":""));
+    if(f.span2)wrap.style.gridColumn="span 2";
     const lbl=el("label","stam-label");
     lbl.innerHTML=f.label+' <span style="color:var(--blue);font-size:10px;">● Fælles</span>';
     const inp=el(f.textarea?"textarea":"input","stam-input"+(f.textarea?" textarea":""));
