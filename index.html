@@ -1016,17 +1016,26 @@ function renderOverview(content){
       const loadJsPDF=()=>{if(window.jspdf){cb();}else{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=cb;document.head.appendChild(s);}};
       loadH2C();
     };
-    loadLibs(()=>{
-      window.html2canvas(grid,{scale:2,backgroundColor:"#F4F6F9",useCORS:true}).then(canvas=>{
+    loadLibs(async ()=>{
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+      const pdfW=pdf.internal.pageSize.getWidth();
+      const pdfH=pdf.internal.pageSize.getHeight();
+      const margin=10;
+      // Render each boring separately — one per page
+      const boringEls=grid.querySelectorAll(".ov-boring");
+      let first=true;
+      for(const el of boringEls){
+        const canvas=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+        if(!first)pdf.addPage();
+        first=false;
         const imgData=canvas.toDataURL("image/png");
-        const {jsPDF}=window.jspdf;
-        const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
-        const pdfW=pdf.internal.pageSize.getWidth();const pdfH=pdf.internal.pageSize.getHeight();
-        const ratio=Math.min(pdfW/canvas.width*2.834,pdfH/canvas.height*2.834);
-        const w=canvas.width*ratio/2.834;const h=canvas.height*ratio/2.834;
-        pdf.addImage(imgData,"PNG",(pdfW-w)/2,(pdfH-h)/2,w,h);
-        pdf.save("Awell-tidsplan-overblik.pdf");
-      });
+        const maxW=pdfW-margin*2;const maxH=pdfH-margin*2;
+        const ratio=Math.min(maxW/(canvas.width/2.834),maxH/(canvas.height/2.834));
+        const w=(canvas.width/2.834)*ratio;const h=(canvas.height/2.834)*ratio;
+        pdf.addImage(imgData,"PNG",margin+(maxW-w)/2,margin+(maxH-h)/2,w,h);
+      }
+      pdf.save("Awell-tidsplan-overblik.pdf");
     });
   };
   btnRow.appendChild(bImg);btnRow.appendChild(bPdfAll);btnRow.appendChild(bAll);
