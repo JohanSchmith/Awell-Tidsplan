@@ -1031,17 +1031,33 @@ function renderOverview(content){
       const boringEls=grid.querySelectorAll(".ov-boring");
       let first=true;
       for(const el of boringEls){
-        // Clone and post-process before rendering
+        // Find which boring this is
+        const boringId=el.getAttribute("data-boring-id")||"";
+        const bs=state.boringStam[boringId]||{};
+        const sd=getStartDate(boringId);
+        const startStr=sd?sd.toLocaleDateString("da-DK",{day:"2-digit",month:"long",year:"numeric"}):"—";
+        // Build wrapper with header matching single boring export
+        const wrapper=document.createElement("div");
+        wrapper.style.cssText="background:#fff;padding:20px;font-family:Inter,sans-serif;display:inline-block;min-width:100%;";
+        const hdr=document.createElement("div");
+        hdr.style.cssText="margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2078C3;";
+        hdr.innerHTML=`<div style="font-size:16px;font-weight:700;color:#1A2233;margin-bottom:4px;">${state.stam.navn||"Awell Brøndboring"}</div>
+          <div style="display:flex;gap:20px;font-size:11px;color:#6B7A99;flex-wrap:wrap;">
+            <span><b style="color:#1A2233">Boring:</b> ${bs.boring||boringId}</span>
+            <span><b style="color:#1A2233">Startdato:</b> ${startStr}</span>
+            <span><b style="color:#1A2233">Total dage:</b> ${maxDay(boringId)}</span>
+            ${state.stam.beskrivelse?`<span><b style="color:#1A2233">Notat:</b> ${state.stam.beskrivelse}</span>`:""}
+          </div>`;
         const clone=el.cloneNode(true);
         clone.querySelectorAll(".bar-label").forEach(lb=>lb.style.display="none");
         clone.querySelectorAll(".resize-handle").forEach(rh=>rh.style.display="none");
         clone.querySelectorAll(".bar.hatched").forEach(b=>{
           b.style.backgroundImage='repeating-linear-gradient(45deg,rgba(255,255,255,0.3) 0px,rgba(255,255,255,0.3) 6px,transparent 6px,transparent 14px)';
         });
-        clone.style.cssText="display:block;width:"+el.offsetWidth+"px;";
-        document.body.appendChild(clone);
-        const canvas=await window.html2canvas(clone,{scale:2,backgroundColor:"#ffffff",useCORS:true});
-        document.body.removeChild(clone);
+        wrapper.appendChild(hdr);wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+        const canvas=await window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true});
+        document.body.removeChild(wrapper);
         if(!first)pdf.addPage();
         first=false;
         const imgData=canvas.toDataURL("image/png");
@@ -1059,7 +1075,7 @@ function renderOverview(content){
   const grid=el("div","overview-grid");grid.id="overview-gantt-grid";
   BORINGER.forEach(b=>{
     const tasks=state.boringer[b];const stam=state.stam;const boringStam=state.boringStam[b];
-    const wrap=el("div","ov-boring");
+    const wrap=el("div","ov-boring");wrap.setAttribute("data-boring-id",b);
     const head=el("div","ov-head");
     const left=el("div");
     const name=el("div","ov-name");name.textContent=(stam.navn?stam.navn+" — ":"")+(boringStam.boring||b);
