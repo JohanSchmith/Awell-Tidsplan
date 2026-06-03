@@ -728,11 +728,11 @@ function buildGantt(b,tasks,interactive){
   // Week header row
   const weekRow=el("div","gantt-week-row");
   const wlabel=el("div","gantt-label-col head");wlabel.textContent="Aktivitet";weekRow.appendChild(wlabel);
-  const wdays=el("div");wdays.style.cssText="flex:1;display:flex;min-width:0;";
+  const wdays=el("div");wdays.style.cssText="flex:1;display:flex;min-width:0;position:relative;";
   weeks.forEach(w=>{
     const wc=el("div","week-cell");
-    const span=w.to-w.from+1;
-    wc.style.cssText=`flex:${span} 0 0;min-width:0;`;
+    const pct=((w.to-w.from+1)/days*100).toFixed(4);
+    wc.style.cssText=`width:${pct}%;flex-shrink:0;box-sizing:border-box;`;
     wc.textContent=w.label;
     wdays.appendChild(wc);
   });
