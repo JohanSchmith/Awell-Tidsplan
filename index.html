@@ -98,7 +98,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .row-label-display{flex:1;font-family:'Inter',sans-serif;font-size:12px;color:var(--text);font-weight:500;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-width:0;}
 .row-label-input:focus{background:var(--blue-bg);cursor:text;}
 .row-del{opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;color:#c0392b;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;}
-.gantt-row:hover .row-del{opacity:1;}
+.gantt-row:hover .row-del{opacity:1;}.gantt-row .row-del.locked-vis{opacity:1!important;}
 .row-track{flex:1;display:grid;position:relative;height:44px;}
 .day-bg{border-right:1px solid var(--border);}
 .day-bg:last-child{border-right:none;}
@@ -150,6 +150,7 @@ const AWELL_LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADwCAIAAAD+
 window.onerror=function(msg,src,line,col,err){document.getElementById("root").innerHTML='<div style="padding:40px;font-family:sans-serif;color:#c0392b"><b>App-fejl:</b> '+msg+'<br><small>'+src+':'+(line||'')+'</small></div>';return true;};
 const COLORS=["#1D9E75","#2B7DC8","#534AB7","#D85A30","#BA7517","#185FA5","#3B6D11","#9B4DA0","#C0392B","#16A085","#E67E22","#7F8C8D"];
 const DEFAULT_TASKS=[
+  // locked:true can be added to any task to prevent dragging
   {id:1,label:"Anstilling",             start:1,end:1, color:"#1D9E75",cat:"Forberedelse"},
   {id:2,label:"Kaptest (før)",           start:1,end:1, color:"#2B7DC8",cat:"Test"},
   {id:3,label:"Adskille boring",         start:1,end:1, color:"#1D9E75",cat:"Forberedelse"},
@@ -185,7 +186,16 @@ const CURRENT_KEY="awell-tidsplan-current";
 function listProjects(){
   try{return JSON.parse(localStorage.getItem(PROJECTS_KEY)||"[]");}catch{return[];}
 }
-function saveProject(){
+let _autoSaveTimer=null;
+function autoSave(){
+  const ind=document.getElementById("autosave-ind");
+  if(ind)ind.textContent="●";
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(()=>{
+    if(state.currentProjectId){saveProject(true);if(ind)ind.textContent="";}
+  },2000);
+}
+function saveProject(silent=false){
   try{
     const projects=listProjects();
     const name=state.stam.navn||"Unavngivet projekt";
@@ -468,11 +478,12 @@ function render(){
   tbr.appendChild(apt);tbr.appendChild(tabsEl);
   const projBtn=el("button","tab");projBtn.textContent="📋 Projekter";projBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.3);background:none;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;margin-left:8px;";
   projBtn.onclick=renderProjectList;
+  const autoInd=el("span");autoInd.id="autosave-ind";autoInd.style.cssText="font-size:10px;color:rgba(255,255,255,0.5);margin-left:4px;";autoInd.textContent="";
   const saveBtn=el("button","tab");saveBtn.textContent="💾 Gem";saveBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:none;color:rgba(255,255,255,0.85);font-size:12px;cursor:pointer;";
   saveBtn.onclick=saveProject;
   const saveNewBtn=el("button","tab");saveNewBtn.textContent="+ Gem kopi";saveNewBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.25);background:none;color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;";
   saveNewBtn.onclick=saveAsNew;
-  tbr.appendChild(projBtn);tbr.appendChild(saveBtn);tbr.appendChild(saveNewBtn);
+  tbr.appendChild(projBtn);tbr.appendChild(autoInd);tbr.appendChild(saveBtn);tbr.appendChild(saveNewBtn);
   const expBtn=el("button","tab");expBtn.textContent="⬇ Eksporter";expBtn.style.cssText="padding:5px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.25);background:none;color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;";
   expBtn.onclick=exportProjectFile;
   tbr.appendChild(expBtn);
@@ -843,6 +854,20 @@ function renderSingle(content){
     mid.appendChild(delBoring);
   }
   const tr=el("div","toolbar-right");
+  const bCopy=el("button","btn");
+  bCopy.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Kopiér til';
+  bCopy.onclick=()=>{
+    const targets=BORINGER.filter(bk=>bk!==b);
+    if(!targets.length){alert("Ingen andre boringer at kopiere til");return;}
+    const opts=targets.map(bk=>state.boringStam[bk]?.boring||bk).join(", ");
+    const choice=prompt("Kopiér tidsplan til hvilken boring?\n\nTilgængelige: "+opts+"\n\nSkriv boringens ID/navn:");
+    if(!choice)return;
+    const targetKey=BORINGER.find(bk=>(state.boringStam[bk]?.boring||bk)===choice.trim());
+    if(!targetKey){alert("Boring ikke fundet: "+choice);return;}
+    if(!confirm("Erstat tidsplanen for "+choice+" med en kopi af "+( state.boringStam[b]?.boring||b)+"?"))return;
+    state.boringer[targetKey]=JSON.parse(JSON.stringify(state.boringer[b]));
+    autoSave();showToast("Tidsplan kopieret til "+choice+" ✓");
+  };
   const bImg=el("button","btn");
   bImg.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Billede';
   bImg.onclick=()=>exportImg(b);
@@ -852,7 +877,7 @@ function renderSingle(content){
   const bXls=el("button","btn primary");
   bXls.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Excel';
   bXls.onclick=()=>exportXls(b);
-  tr.appendChild(bImg);tr.appendChild(bXls);
+  tr.appendChild(bCopy);tr.appendChild(bImg);tr.appendChild(bXls);
   ch.appendChild(ct);ch.appendChild(mid);ch.appendChild(tr);
   card.appendChild(ch);
   const cb=el("div","card-body");
@@ -935,6 +960,7 @@ function buildGantt(b,tasks,interactive){
       const drag=el("div","row-drag");drag.innerHTML="⠿";drag.title="Træk for at flytte";
       drag.draggable=true;
       drag.addEventListener("dragstart",e=>{
+        if(task.locked){e.preventDefault();return;}
         e.dataTransfer.effectAllowed="move";
         e.dataTransfer.setData("text/plain",task.id+"");
         row.classList.add("dragging");
@@ -951,37 +977,56 @@ function buildGantt(b,tasks,interactive){
         if(fromIdx>=0&&toIdx>=0&&fromIdx!==toIdx){
           const [moved]=tasks.splice(fromIdx,1);
           tasks.splice(toIdx,0,moved);
-          render();
+          autoSave();render();
         }
       });
       rlw.appendChild(drag);
     }
+    const lockBtn=el("button","row-del");
+    lockBtn.style.cssText="opacity:0;width:18px;height:18px;border:none;background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:opacity .15s;font-size:11px;";
+    lockBtn.innerHTML=task.locked?"🔒":"🔓";lockBtn.title=task.locked?"Lås op":"Lås position";
+    lockBtn.onclick=()=>{task.locked=!task.locked;autoSave();render();};
     const del=el("button","row-del");del.innerHTML="×";del.title="Fjern aktivitet";
     del.onclick=()=>{state.boringer[b]=state.boringer[b].filter(t=>t.id!==task.id);render();};
     const colorDot=el("div","color-dot");colorDot.style.background=task.color;colorDot.title="Vælg farve";
     const colorInput=el("input","color-picker-input");colorInput.type="color";colorInput.value=task.color;
-    colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;render();};
+    colorInput.oninput=()=>{task.color=colorInput.value;colorDot.style.background=task.color;autoSave();render();};
     colorDot.onclick=()=>colorInput.click();
     const display=el("div","row-label-display");display.textContent=task.label;display.title=task.label;
     if(interactive){
       display.onclick=()=>{inp.style.opacity="1";inp.focus();inp.select();};
-      inp.onchange=()=>{task.label=inp.value;inp.title=inp.value;display.textContent=inp.value;display.title=inp.value;};
+      inp.onchange=()=>{task.label=inp.value;inp.title=inp.value;display.textContent=inp.value;display.title=inp.value;autoSave();};
       inp.onblur=()=>{inp.style.opacity="0";};
     } else {inp.readOnly=true;}
     rlw.appendChild(num);rlw.appendChild(inp);rlw.appendChild(display);
-    if(interactive){rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
+    if(interactive){rlw.appendChild(lockBtn);rlw.appendChild(colorDot);rlw.appendChild(colorInput);rlw.appendChild(del);}
     row.appendChild(rlw);
     const track=el("div","row-track");
     track.style.gridTemplateColumns=`repeat(${days},1fr)`;
     for(let d=1;d<=days;d++){const bg=el("div","day-bg");track.appendChild(bg);}
     const bc=el("div","bar-container");
     const cw=100/days;
+    // Today line
+    const sd2=getStartDate(b);
+    if(sd2){
+      const today=new Date();today.setHours(0,0,0,0);
+      const todayOff=Math.round((today-sd2)/86400000);
+      if(todayOff>=0&&todayOff<days){
+        const todayLine=el("div");
+        todayLine.style.cssText=`position:absolute;left:${((todayOff+0.5)*cw).toFixed(3)}%;top:0;bottom:0;width:2px;background:#E53E3E;opacity:0.7;pointer-events:none;z-index:10;`;
+        const todayDot=el("div");
+        todayDot.style.cssText="position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:#E53E3E;";
+        todayLine.appendChild(todayDot);
+        bc.appendChild(todayLine);
+      }
+    }
     const bar=el("div","bar"+(task.cat==="Renpumpning"?" hatched":""));
     bar.style.left=((task.start-1)*cw)+"%";
     bar.style.width=((task.end-task.start+1)*cw)+"%";
     bar.style.background=task.color;bar.style.color="#fff";
     bar.title=task.label;
-    if(interactive){
+    if(task.locked)bar.style.cursor='not-allowed';
+    if(interactive&&!task.locked){
       const lh=el("div","resize-handle left");
       const lb=el("div","bar-label");lb.textContent=task.label;
       const rh=el("div","resize-handle right");
@@ -1047,7 +1092,7 @@ function startDrag(e,b,task,type,bar,track){
     bar.style.left=((t.start-1)*pw)+"%";bar.style.width=((t.end-t.start+1)*pw)+"%";
     const fd=document.getElementById("footer-"+b);if(fd)updFooter(fd,state.boringer[b],days2);
   };
-  const up=()=>{drag=null;document.body.style.cursor="";render();document.removeEventListener("mousemove",mv);document.removeEventListener("mouseup",up);};
+  const up=()=>{drag=null;document.body.style.cursor="";autoSave();render();document.removeEventListener("mousemove",mv);document.removeEventListener("mouseup",up);};
   document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
 }
 
@@ -1055,6 +1100,20 @@ function renderOverview(content){
   const card=el("div","card");
   const ch=el("div","card-head");
   const ct=el("div","card-title");ct.textContent="Samlet overblik — alle boringer";
+  const bCopy=el("button","btn");
+  bCopy.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Kopiér til';
+  bCopy.onclick=()=>{
+    const targets=BORINGER.filter(bk=>bk!==b);
+    if(!targets.length){alert("Ingen andre boringer at kopiere til");return;}
+    const opts=targets.map(bk=>state.boringStam[bk]?.boring||bk).join(", ");
+    const choice=prompt("Kopiér tidsplan til hvilken boring?\n\nTilgængelige: "+opts+"\n\nSkriv boringens ID/navn:");
+    if(!choice)return;
+    const targetKey=BORINGER.find(bk=>(state.boringStam[bk]?.boring||bk)===choice.trim());
+    if(!targetKey){alert("Boring ikke fundet: "+choice);return;}
+    if(!confirm("Erstat tidsplanen for "+choice+" med en kopi af "+( state.boringStam[b]?.boring||b)+"?"))return;
+    state.boringer[targetKey]=JSON.parse(JSON.stringify(state.boringer[b]));
+    autoSave();showToast("Tidsplan kopieret til "+choice+" ✓");
+  };
   const bImg=el("button","btn");
   bImg.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Billede';
   bImg.onclick=()=>{
@@ -1229,7 +1288,7 @@ function exportPdf(b){
       const ratio=Math.min(pdfW/imgW*2.834,pdfH/imgH*2.834);
       const w=imgW*ratio/2.834;const h=imgH*ratio/2.834;
       pdf.addImage(imgData,"PNG",(pdfW-w)/2,(pdfH-h)/2,w,h);
-      pdf.save("Awell-tidsplan-"+(boringStam.boring||b)+".pdf");
+      pdf.save("Awell-"+(stam.projektnr?stam.projektnr+"-":"")+( boringStam.boring||b)+".pdf");
     });
   });
 }
@@ -1265,7 +1324,7 @@ function exportImg(b){
     document.body.appendChild(wrapper);
     window.html2canvas(wrapper,{scale:2,backgroundColor:"#ffffff",useCORS:true}).then(c=>{
       document.body.removeChild(wrapper);
-      const a=document.createElement("a");a.download="Awell-tidsplan-"+(state.boringStam[b]?.boring||b)+".png";a.href=c.toDataURL();a.click();
+      const a=document.createElement("a");a.download="Awell-"+(state.stam.projektnr?state.stam.projektnr+"-":"")+(state.boringStam[b]?.boring||b)+".png";a.href=c.toDataURL();a.click();
     });
   };
   if(window.html2canvas){load();}
@@ -1288,6 +1347,24 @@ function buildRows(b){
   ];
   const h=["#","Aktivitet","Start (dag)","Slut (dag)","Varighed (dage)"];
   for(let d=1;d<=days;d++)h.push(dayLabel(b,d));
+  // Syreberegner
+  const bs2=state.boringStam[b];
+  if(bs2&&bs2.syretype){
+    rows.push([]);
+    rows.push(["Syreberegner"]);
+    rows.push(["Type",bs2.syretype==="special"?"Specialsyring":"Konventionel"]);
+    rows.push(["Filterstrækning (m)",bs2.filterstraek||"—"]);
+    if(bs2.syretype==="special"){
+      const fs=parseFloat(bs2.filterstraek)||0;const lpm=parseFloat(bs2.lprm)||400;const pumpe=parseFloat(bs2.pumpe)||330;
+      rows.push(["Liter pr. meter",lpm]);rows.push(["Pumpekapacitet (l/t)",pumpe]);
+      rows.push(["Total syremængde (liter)",(fs*lpm).toFixed(0)]);
+      rows.push(["Tilsætningstid (timer)",pumpe>0?(fs*lpm/pumpe).toFixed(1):"—"]);
+    } else {
+      const fs=parseFloat(bs2.filterstraek)||0;const kg=parseFloat(bs2.kgprm)||70;
+      rows.push(["Kg saltsyre pr. meter",kg]);rows.push(["Total saltsyre (kg)",(fs*kg).toFixed(0)]);
+    }
+    rows.push([]);
+  }
   rows.push(h);
   tasks.forEach((t,i)=>{
     const r=[i+1,t.label,t.start,t.end,t.end-t.start+1];
@@ -1300,7 +1377,7 @@ function exportXls(b){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(buildRows(b));
   ws["!cols"]=[{wch:4},{wch:28},{wch:12},{wch:12},{wch:18},...Array(maxDay(b)).fill({wch:8})];
-  XLSX.utils.book_append_sheet(wb,ws,state.boringStam[b]?.boring||"Boring "+b);XLSX.writeFile(wb,"Awell-tidsplan-"+(state.boringStam[b]?.boring||b)+".xlsx");
+  XLSX.utils.book_append_sheet(wb,ws,state.boringStam[b]?.boring||"Boring "+b);XLSX.writeFile(wb,"Awell-"+(state.stam.projektnr?state.stam.projektnr+"-":"")+(state.boringStam[b]?.boring||b)+".xlsx");
 }
 
 function exportAll(){
@@ -1426,6 +1503,11 @@ function renderProject(content){
     const bc=el("div");bc.style.cssText="position:absolute;inset:0;pointer-events:none;";
     const bar=el("div");
     bar.style.cssText=`position:absolute;top:6px;height:28px;border-radius:6px;left:${(startCol/cols*100).toFixed(3)}%;width:${(widthCols/cols*100).toFixed(3)}%;background:${color};color:#fff;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.2);white-space:nowrap;overflow:hidden;`;
+    const startStr2=sd.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
+    const endStr2=ed.toLocaleDateString("da-DK",{day:"2-digit",month:"short"});
+    bar.title=label+" | "+startStr2+" – "+endStr2+" ("+days+" dage)";
+    bar.style.cursor="pointer";
+    bar.onclick=()=>{state.tab="single";state.active=b;render();};
     bar.textContent=label;
     bc.appendChild(bar);track.appendChild(bc);
     row.appendChild(track);
