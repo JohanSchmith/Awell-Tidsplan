@@ -137,7 +137,7 @@ const DEFAULT_TASKS=[
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
 const DEFAULT_STAM={navn:"",beskrivelse:""};
-const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",andeninfo:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null};
+const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
 const DFTOKEN="579475e934e75fc3c88dc550884c9b4e";
 
@@ -183,7 +183,7 @@ function exportProjectFile(){
   // Strip internal notes + links from export
   const cleanBoringStam={};
   Object.keys(state.boringStam).forEach(b=>{
-    const {notat,hustype,adgang,materiel,andeninfo,links,jupiterData,...rest}=state.boringStam[b];
+    const {notat,hustype,adgang,materiel,links,jupiterData,...rest}=state.boringStam[b];
     cleanBoringStam[b]=rest;
   });
   const data={version:1,boringerList:BORINGER,...state,boringStam:cleanBoringStam};
@@ -244,6 +244,8 @@ function openProject(id){
     state.active=saved.active||BORINGER[0];
     state.currentProjectId=id;
     localStorage.setItem(CURRENT_KEY,id);
+    // Migrer andeninfo -> notat
+    Object.values(state.boringStam).forEach(bs=>{if(bs.andeninfo){bs.notat=[bs.notat,bs.andeninfo].filter(Boolean).join("\n\n");delete bs.andeninfo;}});
     render();showToast("Åbnet: "+(state.stam.navn||"Projekt")+" ✓");
   }catch(e){alert("Fejl: "+e.message);}
 }
@@ -318,7 +320,7 @@ function renderProjectList(){
         // Strip notat before export
         try{
           const pd=JSON.parse(p.data);
-          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>{delete bs.notat;delete bs.hustype;delete bs.adgang;delete bs.materiel;delete bs.andeninfo;delete bs.links;delete bs.jupiterData;});
+          if(pd.boringStam)Object.values(pd.boringStam).forEach(bs=>{delete bs.notat;delete bs.hustype;delete bs.adgang;delete bs.materiel;delete bs.links;delete bs.jupiterData;});
           const blob2=new Blob([JSON.stringify(pd)],{type:"application/json"});
           const a=document.createElement("a");
           a.href=URL.createObjectURL(blob2);
@@ -599,8 +601,7 @@ function renderSingle(content){
     {key:"hustype",label:"Hustype"},
     {key:"adgang",label:"Adgangsforhold"},
     {key:"materiel",label:"Materielbehov"},
-    {key:"notat",label:"Generelle noter"},
-    {key:"andeninfo",label:"Anden info",full:true},
+    {key:"notat",label:"Noter",full:true},
   ].forEach(f=>{
     const wrap=el("div","stam-field"+(f.full?" full":""));
     const lbl=el("label","stam-label");lbl.textContent=f.label;
@@ -1028,6 +1029,18 @@ function buildMapHTML(lat,lng,label){
   <\/script></body></html>`;
 }
 
+
+// Migrer andeninfo -> notat (én gang)
+(function(){
+  try{
+    Object.values(state.boringStam).forEach(bs=>{
+      if(bs.andeninfo){
+        bs.notat=[bs.notat,bs.andeninfo].filter(Boolean).join("\n\n");
+        delete bs.andeninfo;
+      }
+    });
+  }catch(e){}
+})();
 // Migrer fra gammel nøgle hvis den findes
 (function(){
   try{
