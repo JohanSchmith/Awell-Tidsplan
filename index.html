@@ -136,7 +136,7 @@ const DEFAULT_TASKS=[
   {id:10,label:"Kaptest (efter)",        start:8,end:8, color:"#2B7DC8",cat:"Test"},
   {id:11,label:"Renpumpning",            start:9,end:10,color:"#3B6D11",cat:"Renpumpning"},
 ];
-const DEFAULT_STAM={navn:"",beskrivelse:""};
+const DEFAULT_STAM={projektnr:"",navn:"",beskrivelse:""};
 const DEFAULT_BORING_STAM={boring:"",startdato:"",notat:"",hustype:"",adgang:"",materiel:"",filter:"",links:[],dgu:"",adresse:"",koordinat:null,boredybde:"",filterTop:"",filterBund:"",jupiterData:null,syretype:"special",filterstraek:"",lprm:"400",pumpe:"330",kgprm:"70"};
 let BORINGER=["B1","B2","B3","B4","B5","B6"];
 const DFTOKEN="579475e934e75fc3c88dc550884c9b4e";
@@ -490,6 +490,7 @@ function renderSingle(content){
 
   // Shared project fields
   [
+    {key:"projektnr",label:"Projektnummer",obj:state.stam,shared:true},
     {key:"navn",label:"Projektnavn / Vandværk",obj:state.stam,shared:true},
     {key:"beskrivelse",label:"Beskrivelse / noter",obj:state.stam,shared:true,textarea:true,full:true},
   ].forEach(f=>{
