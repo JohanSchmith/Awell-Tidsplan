@@ -1106,6 +1106,28 @@ function renderOverview(content){
           </div>`;
         const clone=el.cloneNode(true);
         clone.querySelectorAll(".bar-label").forEach(lb=>lb.style.display="none");
+        // Allow full text in export - remove ellipsis clipping
+        clone.querySelectorAll(".row-label-input").forEach(inp=>{
+          inp.style.whiteSpace="normal";
+          inp.style.overflow="visible";
+          inp.style.textOverflow="clip";
+          inp.style.height="auto";
+        });
+        clone.querySelectorAll(".row-label-wrap,.row-label").forEach(el=>{
+          el.style.height="auto";
+          el.style.minHeight="36px";
+          el.style.alignItems="flex-start";
+          el.style.paddingTop="8px";
+        });
+        clone.querySelectorAll(".gantt-row").forEach(el=>{
+          el.style.height="auto";
+          el.style.minHeight="38px";
+          el.style.alignItems="stretch";
+        });
+        clone.querySelectorAll(".row-track").forEach(el=>{
+          el.style.height="auto";
+          el.style.minHeight="38px";
+        });
         clone.querySelectorAll(".ov-head").forEach(h=>h.style.display="none");
         clone.querySelectorAll(".resize-handle").forEach(rh=>rh.style.display="none");
         clone.querySelectorAll(".bar.hatched").forEach(b=>{
