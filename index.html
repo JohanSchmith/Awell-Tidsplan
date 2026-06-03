@@ -568,65 +568,7 @@ function renderSingle(content){
   jupiterSep.appendChild(dguRow);
   jupiterSep.appendChild(jupStatus2);
 
-    // Manuel boringdata felt
-  const manualGrid=el("div","stam-grid");manualGrid.style.marginTop="10px";
-  [
-    {key:"adresse",label:"Adresse",cls:"jup-adresse"},
-    {key:"boredybde",label:"Boredybde (m)",cls:"jup-boredybde"},
-    {key:"filterTop",label:"Filter top (m)",cls:"jup-filterTop"},
-    {key:"filterBund",label:"Filter bund (m)",cls:"jup-filterBund"},
-  ].forEach(f=>{
-    const wrap=el("div","stam-field");
-    const lbl=el("label","stam-label");lbl.textContent=f.label;
-    const inp=el("input","stam-input");inp.style.cssText="padding:6px 8px;font-size:12px;";
-    if(f.cls)inp.classList.add(f.cls);
-    inp.placeholder=f.label;inp.value=boringStam[f.key]||"";
-    inp.oninput=()=>{boringStam[f.key]=inp.value;};
-    wrap.appendChild(lbl);wrap.appendChild(inp);manualGrid.appendChild(wrap);
-  });
-  jupiterSep.appendChild(manualGrid);
-
-  // Kortafsnit via koordinat
-  const koordinatRow=el("div");koordinatRow.style.cssText="margin-top:10px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;";
-  const latWrap=el("div");latWrap.style.cssText="display:flex;flex-direction:column;gap:3px;flex:1;";
-  const latLbl=el("label","stam-label");latLbl.textContent="Breddegrad (lat)";
-  const latInp=el("input","stam-input");latInp.style.cssText="padding:6px 8px;font-size:12px;";
-  latInp.placeholder="fx 55.6761";latInp.type="number";latInp.step="any";
-  latInp.classList.add("jup-lat");
-  latInp.value=boringStam.koordinat?.lat||"";
-  latInp.oninput=()=>{if(!boringStam.koordinat)boringStam.koordinat={};boringStam.koordinat.lat=parseFloat(latInp.value);};
-  latWrap.appendChild(latLbl);latWrap.appendChild(latInp);
-
-  const lngWrap=el("div");lngWrap.style.cssText="display:flex;flex-direction:column;gap:3px;flex:1;";
-  const lngLbl=el("label","stam-label");lngLbl.textContent="Længdegrad (lng)";
-  const lngInp=el("input","stam-input");lngInp.style.cssText="padding:6px 8px;font-size:12px;";
-  lngInp.placeholder="fx 12.5683";lngInp.type="number";lngInp.step="any";
-  lngInp.classList.add("jup-lng");
-  lngInp.value=boringStam.koordinat?.lng||"";
-  lngInp.oninput=()=>{if(!boringStam.koordinat)boringStam.koordinat={};boringStam.koordinat.lng=parseFloat(lngInp.value);};
-  lngWrap.appendChild(lngLbl);lngWrap.appendChild(lngInp);
-
-  const showMapBtn=el("button","btn primary");
-  showMapBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Vis kort';
-  showMapBtn.onclick=()=>{
-    const lat=parseFloat(latInp.value);const lng=parseFloat(lngInp.value);
-    if(!lat||!lng){alert("Indtast koordinater");return;}
-    boringStam.koordinat={lat,lng};
-    mapFrame.srcdoc=buildMapHTML(lat,lng,boringStam.dgu||"Boring");
-    mapWrap.style.display="block";
-  };
-
-  koordinatRow.appendChild(latWrap);koordinatRow.appendChild(lngWrap);koordinatRow.appendChild(showMapBtn);
-  jupiterSep.appendChild(koordinatRow);
-
-  const mapWrap=el("div");mapWrap.style.cssText="margin-top:10px;"+(boringStam.koordinat?.lat?"":"display:none;");
-  const mapLbl=el("div","stam-label");mapLbl.style.marginBottom="6px";mapLbl.textContent="Kortafsnit";
-  const mapFrame=el("iframe");mapFrame.style.cssText="width:100%;height:280px;border:1px solid var(--border);border-radius:6px;";
-  if(boringStam.koordinat?.lat)mapFrame.srcdoc=buildMapHTML(boringStam.koordinat.lat,boringStam.koordinat.lng,boringStam.dgu||"Boring");
-  mapWrap.appendChild(mapLbl);mapWrap.appendChild(mapFrame);
-  jupiterSep.appendChild(mapWrap);
-
-  stamBody.appendChild(jupiterSep);
+      stamBody.appendChild(jupiterSep);
   stamBody.appendChild(grid);stamCard.appendChild(stamBody);content.appendChild(stamCard);
 
   // Interne noter kort
