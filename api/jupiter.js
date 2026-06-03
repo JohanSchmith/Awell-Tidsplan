@@ -7,47 +7,39 @@ export default async function handler(req, res) {
   if (!dgu) { res.status(400).json({ error: 'Mangler dgu parameter' }); return; }
 
   const normalized = dgu.replace(/^DGU\s*/i, '').trim();
+  const token = process.env.DATAFORSYNINGEN_TOKEN || '3636bf932b8d1f9bd18659524549afc9';
 
-  // Try multiple known Jupiter endpoint formats
-  const endpoints = [
-    `https://data.geus.dk/JupiterWWW/api/v1/borehole?dguNumber=${encodeURIComponent(normalized)}&fmt=json`,
-    `https://data.geus.dk/JupiterWWW/api/v1/borehole?dguNo=${encodeURIComponent(normalized)}&fmt=json`,
-    `https://data.geus.dk/JupiterWWW/api/v1/bore?dguNo=${encodeURIComponent(normalized)}&fmt=json`,
-    `https://data.geus.dk/JupiterWWW/api/v1/boring?dguNumber=${encodeURIComponent(normalized)}`,
+  // Try Dataforsyningen WFS endpoints for Jupiter boring data
+  const services = [
+    `https://api.dataforsyningen.dk/boringarkiv_wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=boringarkiv:borehole&CQL_FILTER=dgu_number='${normalized}'&outputFormat=application/json&token=${token}`,
+    `https://api.dataforsyningen.dk/Jupiter_boringer?service=WFS&version=2.0.0&request=GetFeature&typeNames=Jupiter_boringer:borehole&CQL_FILTER=dgu_nr='${normalized}'&outputFormat=application/json&token=${token}`,
+    `https://api.dataforsyningen.dk/boringer_wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=boringer:boring&CQL_FILTER=dgunr='${normalized}'&outputFormat=application/json&token=${token}`,
   ];
 
   const headers = {
-    'Accept': 'application/json, text/html, */*',
-    'Accept-Language': 'da,en;q=0.9',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Referer': 'https://data.geus.dk/JupiterWWW/',
-    'Origin': 'https://data.geus.dk',
+    'Accept': 'application/json, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
   };
 
   const results = [];
-  for (const url of endpoints) {
+  for (const url of services) {
     try {
       const response = await fetch(url, { headers });
       const text = await response.text();
-      results.push({ url, status: response.status, body: text.substring(0, 300) });
-      if (response.ok && !text.includes('Not Found') && !text.includes('<!doctype')) {
-        try {
-          const data = JSON.parse(text);
-          res.status(200).json(data);
+      const shortUrl = url.split('?')[0].split('/').pop();
+      results.push({ service: shortUrl, status: response.status, body: text.substring(0, 400) });
+      
+      if (response.ok && text.includes('"features"')) {
+        const data = JSON.parse(text);
+        if (data.features && data.features.length > 0) {
+          res.status(200).json({ source: 'dataforsyningen', normalized, geojson: data });
           return;
-        } catch(e) {
-          results[results.length-1].parseError = e.message;
         }
       }
     } catch (err) {
-      results.push({ url, error: err.message });
+      results.push({ error: err.message });
     }
   }
 
-  // Return debug info so we can see what worked
-  res.status(502).json({ 
-    error: 'Ingen endpoints virkede', 
-    normalized,
-    results 
-  });
+  res.status(502).json({ error: 'Ingen data fundet', normalized, results });
 }

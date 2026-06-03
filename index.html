@@ -1002,20 +1002,50 @@ async function lookupJupiter(dguNumber, boringStam, onDone){
       }
       throw new Error(detail);
     }
-    const b=Array.isArray(data)?data[0]:data;
-    if(!b)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
-    boringStam.dgu=dguNumber;
-    boringStam.adresse=(b.location?.streetName||"")+" "+(b.location?.houseNumber||"")+(b.location?.city?", "+b.location.city:"");
-    if(b.location?.latitude&&b.location?.longitude){
-      boringStam.koordinat={lat:b.location.latitude,lng:b.location.longitude};
+    // Parse svar — understøtter både Jupiter JSON og Dataforsyningen GeoJSON
+    let b=null;
+    if(data.geojson){
+      // GeoJSON fra Dataforsyningen WFS
+      const feat=data.geojson.features[0];
+      if(!feat)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
+      const p=feat.properties||{};
+      const geom=feat.geometry;
+      boringStam.dgu=dguNumber;
+      boringStam.adresse=[p.vejnavn,p.husnr,p.postnr,p.by].filter(Boolean).join(" ")||p.adresse||"";
+      if(geom&&geom.coordinates){
+        // GeoJSON er typisk i EPSG:25832 (UTM32) — konverter til WGS84 approximativt
+        const [x,y]=geom.coordinates;
+        if(x>100000){
+          // UTM32 -> WGS84 approx
+          const lng=9+(x-500000)/55000;
+          const lat=56+(y-6200000)/111000;
+          boringStam.koordinat={lat,lng};
+        } else {
+          boringStam.koordinat={lat:geom.coordinates[1],lng:geom.coordinates[0]};
+        }
+      }
+      boringStam.boredybde=p.dybde!=null?p.dybde+"":p.total_depth!=null?p.total_depth+"":"";
+      boringStam.filterTop=p.filter_top!=null?p.filter_top+"":"";
+      boringStam.filterBund=p.filter_bund!=null?p.filter_bund+"":p.filter_bottom!=null?p.filter_bottom+"":"";
+      boringStam.jupiterData=p;
+      b=p;
+    } else {
+      // Direkte Jupiter JSON
+      b=Array.isArray(data)?data[0]:data;
+      if(!b)throw new Error("Ingen boring fundet med DGU-nummer "+dguNumber);
+      boringStam.dgu=dguNumber;
+      boringStam.adresse=(b.location?.streetName||"")+" "+(b.location?.houseNumber||"")+(b.location?.city?", "+b.location.city:"");
+      if(b.location?.latitude&&b.location?.longitude){
+        boringStam.koordinat={lat:b.location.latitude,lng:b.location.longitude};
+      }
+      boringStam.boredybde=b.totalDepth!=null?b.totalDepth+"":"";
+      if(b.screens&&b.screens.length){
+        const s=b.screens[0];
+        boringStam.filterTop=s.top!=null?s.top+"":"";
+        boringStam.filterBund=s.bottom!=null?s.bottom+"":"";
+      }
+      boringStam.jupiterData=b;
     }
-    boringStam.boredybde=b.totalDepth!=null?b.totalDepth+"":"";
-    if(b.screens&&b.screens.length){
-      const s=b.screens[0];
-      boringStam.filterTop=s.top!=null?s.top+"":"";
-      boringStam.filterBund=s.bottom!=null?s.bottom+"":"";
-    }
-    boringStam.jupiterData=b;
     onDone(null,b);
   }catch(e){onDone(e);}
 }
